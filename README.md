@@ -567,46 +567,4 @@ VITE_AUTH_API_URL=/api/auth
 VITE_AI_API_URL=/api/ai
 ```
 
----
 
-## Roadmap por Sprints
-
-> Cada sprint tem duração de **2 semanas**. O projeto está organizado em 5 sprints para entrega do MVP funcional, seguidos de 2 sprints de evolução pós-MVP.
-
----
-
-### Sprint 0 — Fundação e Setup (Semana 0–1)
-
-**Objetivo:** Monorepo configurado, ambiente local rodando, CI básico no ar.
-
-#### Tarefas
-
-**Infra e DevOps**
-- [ ] Criar repositório no GitHub com estrutura de monorepo
-- [ ] Criar `docker-compose.yml` raiz com PostgreSQL e Redis
-- [ ] Criar `Makefile` com targets: `dev`, `down`, `logs`, `test`, `build`
-- [ ] Criar `.env.example` documentado com todas as variáveis
-- [ ] Configurar GitHub Actions (`ci.yml`) com steps de build e lint
-- [ ] Configurar Nginx como gateway com rotas `/api/auth/*` e `/api/ai/*`
-
-**Auth Service (Java)**
-- [ ] Inicializar projeto Spring Boot com dependências (Security, JPA, Flyway, JWT)
-- [ ] Configurar conexão com PostgreSQL via `application.yml`
-- [ ] Criar primeira migration Flyway (`V1__create_users_table.sql`)
-- [ ] Criar `Dockerfile` multi-stage para produção
-- [ ] Endpoint `GET /health` retornando `200 OK`
-
-**AI Service (Python)**
-- [ ] Inicializar projeto FastAPI com `requirements.txt`
-- [ ] Configurar Celery com Redis como broker
-- [ ] Criar `Dockerfile` com uvicorn
-- [ ] Endpoint `GET /health` retornando `200 OK`
-- [ ] Endpoint `GET /styles` retornando lista hardcoded de estilos
-
-**Frontend**
-- [ ] Criar estrutura de pastas `pages/`, `js/`, `css/`, `assets/`
-- [ ] Criar `design-tokens.css` com variáveis de cor, tipografia e espaçamento
-- [ ] Criar página `login.html` com layout base (sem lógica ainda)
-- [ ] Configurar `nginx.conf` para servir arquivos estáticos
-
-**Entregável:** `make dev` sobe todo o ambiente; todos os `/health` respondem `200`.
