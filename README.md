@@ -567,4 +567,5 @@ VITE_AUTH_API_URL=/api/auth
 VITE_AI_API_URL=/api/ai
 ```
 
-
+# Padrão de Commit
+https://dev.to/renatoadorno/padroes-de-commits-commit-patterns-41co
