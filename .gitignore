@@ -1,0 +1,11 @@
+# Variáveis de ambiente locais
+.env
+.env.local
+
+# Volumes Docker
+postgres_data/
+redis_data/
+
+# OS
+.DS_Store
+Thumbs.db
