@@ -1,0 +1,97 @@
+name: CI Pipeline Multi-Stack
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ---------------------------------------------------
+  # JOB 1: FRONTEND (React)
+  # ---------------------------------------------------
+  frontend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      - name: Instalar Dependências
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Build e Lint
+        run: |
+          npm run lint
+          npm run build
+        working-directory: ./frontend
+
+  # ---------------------------------------------------
+  # JOB 2: AUTH-SERVICE (Java)
+  # ---------------------------------------------------
+  auth-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21.0.9'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build e Testes
+        run: mvn clean verify
+        working-directory: ./auth-service
+
+  # ---------------------------------------------------
+  # JOB 3: AI-SERVICE (Python)
+  # ---------------------------------------------------
+  ai-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.4'
+          cache: 'pip'
+          cache-dependency-path: './ai-service/requirements.txt'
+
+      - name: Instalar Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        working-directory: ./ai-service
+
+      - name: Lint e Testes
+        run: |
+          pip install flake8 pytest
+          flake8 .
+          pytest
+        working-directory: ./ai-service
+
+  # ---------------------------------------------------
+  # JOB 4: DOCKER BUILD CHECK
+  # ---------------------------------------------------
+  docker-check:
+    runs-on: ubuntu-latest
+    # Esse job só vai rodar se o código do Front, Auth e AI passarem sem erros
+    needs: [frontend-ci, auth-ci, ai-ci]
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Testar Build do Docker Compose
+        run: docker-compose build
