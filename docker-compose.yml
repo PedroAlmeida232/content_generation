@@ -1,8 +1,29 @@
 version: "3.9"
 
 services:
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+    depends_on:
+      - auth-service
+      - ai-service
 
-  # ── Banco de dados ──────────────────────────────
+  auth-service:
+    build: ./auth-service
+    env_file:
+      - .env
+
+  ai-service:
+    build: ./ai-service
+    env_file:
+      - .env
+
+  # --- Banco de dados ------
   postgres:
     image: postgres:15-alpine
     container_name: carousel-postgres
