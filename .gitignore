@@ -9,3 +9,6 @@ redis_data/
 # OS
 .DS_Store
 Thumbs.db
+
+#task documentation
+docs/task
