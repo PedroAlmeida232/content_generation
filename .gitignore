@@ -10,5 +10,8 @@ redis_data/
 .DS_Store
 Thumbs.db
 
-#task documentation
-docs/task
+#idea files
+.idea
+
+#docs files
+docs/task/
