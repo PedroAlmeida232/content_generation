@@ -9,3 +9,9 @@ redis_data/
 # OS
 .DS_Store
 Thumbs.db
+
+#idea files
+.idea
+
+#docs files
+docs/task/

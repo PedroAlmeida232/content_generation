@@ -1,44 +1,20 @@
-version: "3.9"
-
 services:
-  gateway:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    env_file:
-      - .env
-    volumes:
-      - ./nginx/templates:/etc/nginx/templates:ro
-    depends_on:
-      - auth-service
-      - ai-service
-
-  auth-service:
-    build: ./auth-service
-    env_file:
-      - .env
-
-  ai-service:
-    build: ./ai-service
-    env_file:
-      - .env
-
   # --- Banco de dados ------
   postgres:
     image: postgres:15-alpine
     container_name: carousel-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,14 +41,20 @@ services:
     build: ./auth-service
     container_name: auth-service
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${AUTH_PORT}:8080"
     env_file:
       - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
 
 volumes:
   postgres_data:
+    name: content_generation_postgres_data_v2
   redis_data:
