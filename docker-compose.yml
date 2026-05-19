@@ -19,9 +19,7 @@ services:
       timeout: 5s
       retries: 5
 
-
-
-  # ── Fila e cache ────────────────────────────────
+  # --- Fila e cache ------
   redis:
     image: redis:7-alpine
     container_name: carousel-redis
