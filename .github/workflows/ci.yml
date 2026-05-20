@@ -2,36 +2,33 @@ name: CI Pipeline Multi-Stack
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   # ---------------------------------------------------
-  # JOB 1: FRONTEND (React)
+  # JOB 1: FRONTEND ESTATICO
   # ---------------------------------------------------
   frontend-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout código
+      - name: Checkout codigo
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.15.0'
-          cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
-
-      - name: Instalar Dependências
-        run: npm ci
-        working-directory: ./frontend
-
-      - name: Build e Lint
+      - name: Validar arquivos do frontend
         run: |
-          npm run lint
-          npm run build
-        working-directory: ./frontend
+          test -f ./frontend/index.html
+          test -f ./frontend/pages/login.html
+          test -f ./frontend/css/design-tokens.css
+          test -f ./frontend/css/home.css
+          test -f ./frontend/css/login.css
+          test -f ./nginx/templates/default.conf.template
+
+      - name: Validar sintaxe basica do HTML
+        run: |
+          grep -q "<!DOCTYPE html>" ./frontend/index.html
+          grep -q "<!DOCTYPE html>" ./frontend/pages/login.html
 
   # ---------------------------------------------------
   # JOB 2: AUTH-SERVICE (Java)
@@ -39,17 +36,17 @@ jobs:
   auth-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout código
+      - name: Checkout codigo
         uses: actions/checkout@v4
 
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
-          java-version: '21.0.9'
-          distribution: 'temurin'
-          cache: 'maven'
+          java-version: "21.0.9"
+          distribution: "temurin"
+          cache: "maven"
 
-      - name: Build e Testes
+      - name: Build e testes
         run: mvn clean verify
         working-directory: ./auth-service
 
@@ -59,23 +56,23 @@ jobs:
   ai-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout código
+      - name: Checkout codigo
         uses: actions/checkout@v4
 
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.4'
-          cache: 'pip'
-          cache-dependency-path: './ai-service/requirements.txt'
+          python-version: "3.14.4"
+          cache: "pip"
+          cache-dependency-path: ./ai-service/requirements.txt
 
-      - name: Instalar Dependências
+      - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
         working-directory: ./ai-service
 
-      - name: Lint e Testes
+      - name: Lint e testes
         run: |
           pip install flake8 pytest
           flake8 .
@@ -87,11 +84,10 @@ jobs:
   # ---------------------------------------------------
   docker-check:
     runs-on: ubuntu-latest
-    # Esse job só vai rodar se o código do Front, Auth e AI passarem sem erros
     needs: [frontend-ci, auth-ci, ai-ci]
     steps:
-      - name: Checkout código
+      - name: Checkout codigo
         uses: actions/checkout@v4
 
-      - name: Testar Build do Docker Compose
+      - name: Testar build do Docker Compose
         run: docker-compose build
