@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 router = APIRouter()
-#styles
+# styles
 VISUAL_STYLES = [
     "minimalista",
     "moderno",
