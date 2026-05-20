@@ -1,15 +1,11 @@
 
-upstream auth_service {
-    server auth-service:${AUTH_PORT};
-}
-
-upstream ai_service {
-    server ai-service:${AI_PORT};
-}
-
 server {
     listen 80;
     server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    resolver 127.0.0.11 ipv6=off;
 
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -17,15 +13,25 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
 
     location /api/auth/ {
-        proxy_pass http://auth_service/;
+        set $auth_upstream auth-service:8080;
+        proxy_pass http://$auth_upstream/;
     }
 
     location /api/ai/ {
-        proxy_pass http://ai_service/;
+        set $ai_upstream ai-service:8000;
+        proxy_pass http://$ai_upstream/;
 
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
         proxy_send_timeout 300s;
         proxy_buffering off;
+    }
+
+    location = / {
+        try_files /index.html =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
     }
 }

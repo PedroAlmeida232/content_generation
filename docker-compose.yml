@@ -52,6 +52,35 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
 
+  #---- ai -----------------
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "${AI_PORT}:8000"
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: ${REDIS_URL}
+
+  #---- frontend/gateway ---
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: content-generation-nginx
+    depends_on:
+      auth-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+
 volumes:
   postgres_data:
     name: content_generation_postgres_data_v2
