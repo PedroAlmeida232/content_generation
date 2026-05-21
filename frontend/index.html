@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Generation | Overview</title>
+    <link rel="stylesheet" href=".//css/design-tokens.css" />
+    <link rel="stylesheet" href=".//css/home.css" />
+  </head>
+  <body>
+    <div class="home-shell">
+      <header class="home-header">
+        <div class="home-brand">
+          <span class="home-brand-mark">CG</span>
+          <span>Content Generation</span>
+        </div>
+        <nav class="home-nav" aria-label="Navegacao principal">
+          <a href="#funcionalidades">Funcionalidades</a>
+          <a href="#fluxo">Fluxo</a>
+          <a class="home-cta" href="/pages/login.html">Entrar</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <h1>Uma plataforma para transformar contexto de marca em carrossel com apoio de IA.</h1>
+            <p>
+              O projeto integra autenticação, preparação de contexto, seleção de estilo visual
+              e geração de conteúdo para acelerar a produção de materiais prontos para publicação.
+            </p>
+            <div class="hero-actions">
+              <a class="primary" href="/pages/login.html">Acessar login</a>
+              <a class="secondary" href="#funcionalidades">Ver funcionalidades</a>
+            </div>
+          </div>
+
+          <aside class="hero-panel" aria-label="Resumo do projeto">
+            <h2>Visão geral</h2>
+            <ul>
+              <li>`auth-service` cuida da autenticação e segurança.</li>
+              <li>`ai-service` expõe endpoints para geração e suporte criativo.</li>
+              <li>O frontend organiza a experiência desde o briefing até a entrega.</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section class="section" id="funcionalidades">
+          <h2>Funcionalidades em destaque</h2>
+          <p>
+            A proposta do produto é reduzir o esforço operacional de quem precisa produzir
+            conteúdo recorrente com consistência visual e velocidade.
+          </p>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <h3>Contexto de marca</h3>
+              <p>
+                Centraliza referências como tom de voz, identidade visual e insumos criativos
+                para orientar as gerações de forma mais previsível.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <h3>Estilos visuais</h3>
+              <p>
+                Permite trabalhar com estilos definidos para destravar testes rápidos no frontend
+                e evoluir depois para opções mais sofisticadas.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <h3>Geração assistida</h3>
+              <p>
+                Prepara a integração entre prompts, assets e automações para compor carrosséis
+                com menos retrabalho manual.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="fluxo">
+          <h2>Fluxo esperado da experiência</h2>
+          <p>
+            O frontend nasce com uma base simples, mas já orientada ao caminho principal que o
+            usuário deve percorrer dentro da plataforma.
+          </p>
+
+          <div class="flow-list">
+            <article class="flow-step">
+              <strong>1</strong>
+              <p>Entrar na plataforma e acessar o workspace principal.</p>
+            </article>
+            <article class="flow-step">
+              <strong>2</strong>
+              <p>Definir contexto de marca, referências e objetivo do conteúdo.</p>
+            </article>
+            <article class="flow-step">
+              <strong>3</strong>
+              <p>Escolher estilo visual e acionar os serviços de apoio da IA.</p>
+            </article>
+            <article class="flow-step">
+              <strong>4</strong>
+              <p>Revisar a saída gerada e evoluir para publicação ou iteração.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer-note">
+        Base inicial de apresentação do projeto. A autenticação permanece disponível em
+        <a href="/pages/login.html">/pages/login.html</a>.
+      </footer>
+    </div>
+  </body>
+</html>
