@@ -3,7 +3,6 @@ package com.example.auth_service.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,10 +20,11 @@ import com.example.auth_service.domain.User;
 import com.example.auth_service.domain.UserContext;
 import com.example.auth_service.dto.CreateContextRequest;
 import com.example.auth_service.dto.UpdateContextRequest;
-import com.example.auth_service.dto.UserContextResponse;
+import com.example.auth_service.dto.UserContextDto;
 import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserContextMapper;
 import com.example.auth_service.repository.UserContextRepository;
 import com.example.auth_service.repository.UserRepository;
 
@@ -32,7 +32,8 @@ class UserContextServiceTest {
 
 	private final UserContextRepository userContextRepository = org.mockito.Mockito.mock(UserContextRepository.class);
 	private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
-	private final UserContextService userContextService = new UserContextService(userContextRepository, userRepository);
+	private final UserContextMapper userContextMapper = UserContextMapper.INSTANCE;
+	private final UserContextService userContextService = new UserContextService(userContextRepository, userRepository, userContextMapper);
 
 	@Test
 	void getContextsReturnsAllContextsForUser() {
@@ -42,7 +43,7 @@ class UserContextServiceTest {
 
 		when(userContextRepository.findByUserId(userId)).thenReturn(List.of(context1, context2));
 
-		List<UserContextResponse> result = userContextService.getContexts(userId);
+		List<UserContextDto> result = userContextService.getContexts(userId);
 
 		assertEquals(2, result.size());
 		assertEquals("key1", result.get(0).contextKey());
@@ -57,7 +58,7 @@ class UserContextServiceTest {
 
 		when(userContextRepository.findById(contextId)).thenReturn(Optional.of(context));
 
-		UserContextResponse response = userContextService.getContext(userId, contextId);
+		UserContextDto response = userContextService.getContext(userId, contextId);
 
 		assertNotNull(response);
 		assertEquals(contextId, response.id());
@@ -102,7 +103,7 @@ class UserContextServiceTest {
 		});
 
 		CreateContextRequest request = new CreateContextRequest("newKey", "newValue");
-		UserContextResponse response = userContextService.createContext(userId, request);
+		UserContextDto response = userContextService.createContext(userId, request);
 
 		assertNotNull(response.id());
 		assertEquals("newKey", response.contextKey());
@@ -149,7 +150,7 @@ class UserContextServiceTest {
 		when(userContextRepository.save(any(UserContext.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		UpdateContextRequest request = new UpdateContextRequest("key", "newVal");
-		UserContextResponse response = userContextService.updateContext(userId, contextId, request);
+		UserContextDto response = userContextService.updateContext(userId, contextId, request);
 
 		assertEquals("key", response.contextKey());
 		assertEquals("newVal", response.contextValue());
@@ -167,7 +168,7 @@ class UserContextServiceTest {
 		when(userContextRepository.save(any(UserContext.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		UpdateContextRequest request = new UpdateContextRequest("newKey", "val");
-		UserContextResponse response = userContextService.updateContext(userId, contextId, request);
+		UserContextDto response = userContextService.updateContext(userId, contextId, request);
 
 		assertEquals("newKey", response.contextKey());
 		verify(userContextRepository).findByUserIdAndContextKey(userId, "newKey");
