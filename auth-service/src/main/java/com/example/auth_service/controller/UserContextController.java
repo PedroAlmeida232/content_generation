@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth_service.dto.CreateContextRequest;
 import com.example.auth_service.dto.UpdateContextRequest;
-import com.example.auth_service.dto.UserContextResponse;
+import com.example.auth_service.dto.UserContextDto;
 import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.UserContextService;
 
@@ -36,26 +36,26 @@ public class UserContextController {
 	}
 
 	@GetMapping
-	public List<UserContextResponse> getContexts(Authentication authentication) {
+	public List<UserContextDto> getContexts(Authentication authentication) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		return userContextService.getContexts(principal.userId());
 	}
 
 	@GetMapping("/{id}")
-	public UserContextResponse getContext(Authentication authentication, @PathVariable UUID id) {
+	public UserContextDto getContext(Authentication authentication, @PathVariable UUID id) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		return userContextService.getContext(principal.userId(), id);
 	}
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public UserContextResponse createContext(Authentication authentication, @Valid @RequestBody CreateContextRequest request) {
+	public UserContextDto createContext(Authentication authentication, @Valid @RequestBody CreateContextRequest request) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		return userContextService.createContext(principal.userId(), request);
 	}
 
 	@PutMapping("/{id}")
-	public UserContextResponse updateContext(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody UpdateContextRequest request) {
+	public UserContextDto updateContext(Authentication authentication, @PathVariable UUID id, @Valid @RequestBody UpdateContextRequest request) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		return userContextService.updateContext(principal.userId(), id, request);
 	}

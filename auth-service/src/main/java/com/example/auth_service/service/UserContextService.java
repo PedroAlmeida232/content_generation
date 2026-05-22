@@ -10,10 +10,11 @@ import com.example.auth_service.domain.User;
 import com.example.auth_service.domain.UserContext;
 import com.example.auth_service.dto.CreateContextRequest;
 import com.example.auth_service.dto.UpdateContextRequest;
-import com.example.auth_service.dto.UserContextResponse;
+import com.example.auth_service.dto.UserContextDto;
 import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserContextMapper;
 import com.example.auth_service.repository.UserContextRepository;
 import com.example.auth_service.repository.UserRepository;
 
@@ -21,28 +22,30 @@ import com.example.auth_service.repository.UserRepository;
 public class UserContextService {
 
 	private final UserContextRepository userContextRepository;
+	private final UserContextMapper userContextMapper;
 	private final UserRepository userRepository;
 
-	public UserContextService(UserContextRepository userContextRepository, UserRepository userRepository) {
+	public UserContextService(UserContextRepository userContextRepository, UserRepository userRepository, UserContextMapper userContextMapper) {
 		this.userContextRepository = userContextRepository;
 		this.userRepository = userRepository;
+		this.userContextMapper = userContextMapper;
 	}
 
-	public List<UserContextResponse> getContexts(UUID userId) {
+	public List<UserContextDto> getContexts(UUID userId) {
 		return userContextRepository.findByUserId(userId).stream()
-			.map(this::mapToResponse)
+			.map(this::mapToDto)
 			.toList();
 	}
 
-	public UserContextResponse getContext(UUID userId, UUID contextId) {
+	public UserContextDto getContext(UUID userId, UUID contextId) {
 		UserContext context = userContextRepository.findById(contextId)
 			.filter(c -> c.getUser().getId().equals(userId))
 			.orElseThrow(() -> new ContextNotFoundException("Context not found with id: " + contextId));
-		return mapToResponse(context);
+		return mapToDto(context);
 	}
 
 	@Transactional
-	public UserContextResponse createContext(UUID userId, CreateContextRequest request) {
+	public UserContextDto createContext(UUID userId, CreateContextRequest request) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new UserNotFoundException("User not found"));
 
@@ -57,11 +60,11 @@ public class UserContextService {
 		context.setContextValue(request.contextValue() != null ? request.contextValue().trim() : null);
 
 		UserContext saved = userContextRepository.save(context);
-		return mapToResponse(saved);
+		return mapToDto(saved);
 	}
 
 	@Transactional
-	public UserContextResponse updateContext(UUID userId, UUID contextId, UpdateContextRequest request) {
+	public UserContextDto updateContext(UUID userId, UUID contextId, UpdateContextRequest request) {
 		UserContext context = userContextRepository.findById(contextId)
 			.filter(c -> c.getUser().getId().equals(userId))
 			.orElseThrow(() -> new ContextNotFoundException("Context not found with id: " + contextId));
@@ -77,7 +80,7 @@ public class UserContextService {
 		context.setContextValue(request.contextValue() != null ? request.contextValue().trim() : null);
 
 		UserContext saved = userContextRepository.save(context);
-		return mapToResponse(saved);
+		return mapToDto(saved);
 	}
 
 	@Transactional
@@ -88,14 +91,8 @@ public class UserContextService {
 		userContextRepository.delete(context);
 	}
 
-	private UserContextResponse mapToResponse(UserContext context) {
-		return new UserContextResponse(
-			context.getId(),
-			context.getContextKey(),
-			context.getContextValue(),
-			context.getCreatedAt(),
-			context.getUpdatedAt()
-		);
+	private UserContextDto mapToDto(UserContext context) {
+		return userContextMapper.toDto(context);
 	}
 
 }
