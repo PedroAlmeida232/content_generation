@@ -10,12 +10,26 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.example.auth_service.dto.ErrorResponse;
+import com.example.auth_service.exception.ContextAlreadyExistsException;
+import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.exception.UserNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+	@ExceptionHandler(ContextNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleContextNotFound(ContextNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+			.body(new ErrorResponse(exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(ContextAlreadyExistsException.class)
+	ResponseEntity<ErrorResponse> handleContextAlreadyExists(ContextAlreadyExistsException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(new ErrorResponse(exception.getMessage(), Map.of()));
+	}
 
 	@ExceptionHandler(EmailAlreadyInUseException.class)
 	ResponseEntity<ErrorResponse> handleEmailAlreadyInUse(EmailAlreadyInUseException exception) {
