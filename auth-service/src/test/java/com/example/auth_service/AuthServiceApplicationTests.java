@@ -11,13 +11,18 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.auth_service.domain.User;
+import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.JwtService;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,6 +44,9 @@ class AuthServiceApplicationTests {
 	@Autowired
 	private JwtService jwtService;
 
+	@MockitoBean
+	private UserRepository userRepository;
+
 	@Test
 	void healthEndpointReturnsOkWithoutAuthentication() throws Exception {
 		mockMvc.perform(get("/health"))
@@ -57,10 +65,65 @@ class AuthServiceApplicationTests {
 
 	@Test
 	void registerEndpointIsPublic() throws Exception {
-		mockMvc.perform(post("/auth/register"))
-			.andExpect(status().isOk())
+		when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
+		when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+			User user = invocation.getArgument(0);
+			user.setId(UUID.randomUUID());
+			return user;
+		});
+
+		mockMvc.perform(post("/auth/register")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "user@example.com",
+				  "password": "plain-text-password",
+				  "name": "Pedro"
+				}
+				"""))
+			.andExpect(status().isCreated())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-			.andExpect(jsonPath("$.status").value("public"));
+			.andExpect(jsonPath("$.email").value("user@example.com"))
+			.andExpect(jsonPath("$.name").value("Pedro"))
+			.andExpect(jsonPath("$.password").doesNotExist())
+			.andExpect(jsonPath("$.passwordHash").doesNotExist());
+	}
+
+	@Test
+	void registerEndpointRejectsDuplicateEmail() throws Exception {
+		when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
+
+		mockMvc.perform(post("/auth/register")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "user@example.com",
+				  "password": "plain-text-password",
+				  "name": "Pedro"
+				}
+				"""))
+			.andExpect(status().isConflict())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Email already in use: user@example.com"));
+	}
+
+	@Test
+	void registerEndpointRejectsInvalidPayload() throws Exception {
+		mockMvc.perform(post("/auth/register")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "not-an-email",
+				  "password": "123",
+				  "name": ""
+				}
+				"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Validation failed"))
+			.andExpect(jsonPath("$.errors.email").exists())
+			.andExpect(jsonPath("$.errors.password").exists())
+			.andExpect(jsonPath("$.errors.name").exists());
 	}
 
 	@Test
@@ -109,11 +172,6 @@ class AuthServiceApplicationTests {
 
 		@PostMapping("/auth/login")
 		ResponseEntity<Map<String, String>> login() {
-			return ResponseEntity.ok(Map.of("status", "public"));
-		}
-
-		@PostMapping("/auth/register")
-		ResponseEntity<Map<String, String>> register() {
 			return ResponseEntity.ok(Map.of("status", "public"));
 		}
 
