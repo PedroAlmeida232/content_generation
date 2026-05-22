@@ -1,6 +1,5 @@
 package com.example.auth_service;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,7 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth_service.domain.User;
 import com.example.auth_service.repository.UserRepository;
-import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.JwtService;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -208,12 +205,17 @@ class AuthServiceApplicationTests {
 
 	@Test
 	void refreshEndpointAllowsRequestWithValidToken() throws Exception {
-		String token = jwtService.generateToken(UUID.randomUUID(), "user@example.com");
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
 
 		mockMvc.perform(post("/auth/refresh")
 			.header("Authorization", "Bearer " + token))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.token").isString())
+			.andExpect(jsonPath("$.tokenType").value("Bearer"))
+			.andExpect(jsonPath("$.expiresIn").value(86400000))
+			.andExpect(jsonPath("$.userId").value(userId.toString()))
 			.andExpect(jsonPath("$.email").value("user@example.com"));
 	}
 
@@ -244,22 +246,14 @@ class AuthServiceApplicationTests {
 	@RestController
 	static class ProtectedTestController {
 
-		@PostMapping("/auth/refresh")
-		ResponseEntity<Map<String, String>> refresh(org.springframework.security.core.Authentication authentication) {
-			JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
-			return ResponseEntity.ok(Map.of(
-				"email", principal.email(),
-				"userId", principal.userId().toString()
-			));
-		}
-
 		@GetMapping("/users/me")
-		ResponseEntity<Map<String, String>> usersMe(org.springframework.security.core.Authentication authentication) {
-			JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
-			return ResponseEntity.ok(Map.of(
+		java.util.Map<String, String> usersMe(org.springframework.security.core.Authentication authentication) {
+			com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal principal =
+				(com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal) authentication.getPrincipal();
+			return java.util.Map.of(
 				"email", principal.email(),
 				"userId", principal.userId().toString()
-			));
+			);
 		}
 
 	}
