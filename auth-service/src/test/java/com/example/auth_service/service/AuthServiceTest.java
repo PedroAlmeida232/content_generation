@@ -25,6 +25,7 @@ import com.example.auth_service.dto.RegisterResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.repository.UserRepository;
+import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -111,6 +112,21 @@ class AuthServiceTest {
 
 		assertThrows(InvalidCredentialsException.class,
 			() -> authService.login(new LoginRequest("user@example.com", "plain-text-password")));
+	}
+
+	@Test
+	void refreshReturnsValidJwtForAuthenticatedPrincipal() {
+		JwtPrincipal principal = new JwtPrincipal(UUID.randomUUID(), "user@example.com");
+
+		LoginResponse response = authService.refresh(principal);
+
+		assertEquals("Bearer", response.tokenType());
+		assertEquals(principal.userId(), response.userId());
+		assertEquals(principal.email(), response.email());
+		assertEquals(86400000L, response.expiresIn());
+		assertTrue(jwtService.isTokenValid(response.token()));
+		assertEquals(principal.email(), jwtService.extractEmail(response.token()));
+		assertEquals(principal.userId(), jwtService.extractUserId(response.token()));
 	}
 
 }

@@ -13,6 +13,7 @@ import com.example.auth_service.dto.RegisterResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.repository.UserRepository;
+import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 
 @Service
 public class AuthService {
@@ -67,6 +68,18 @@ public class AuthService {
 			jwtService.getExpirationMs(),
 			user.getId(),
 			user.getEmail()
+		);
+	}
+
+	public LoginResponse refresh(JwtPrincipal principal) {
+		String token = jwtService.generateToken(principal.userId(), principal.email());
+
+		return new LoginResponse(
+			token,
+			"Bearer",
+			jwtService.getExpirationMs(),
+			principal.userId(),
+			principal.email()
 		);
 	}
 

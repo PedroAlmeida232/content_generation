@@ -2,6 +2,7 @@ package com.example.auth_service.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +12,7 @@ import com.example.auth_service.dto.LoginRequest;
 import com.example.auth_service.dto.LoginResponse;
 import com.example.auth_service.dto.RegisterRequest;
 import com.example.auth_service.dto.RegisterResponse;
+import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -34,6 +36,13 @@ public class AuthController {
 	@PostMapping("/login")
 	ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 		LoginResponse response = authService.login(request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/refresh")
+	ResponseEntity<LoginResponse> refresh(Authentication authentication) {
+		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+		LoginResponse response = authService.refresh(principal);
 		return ResponseEntity.ok(response);
 	}
 
