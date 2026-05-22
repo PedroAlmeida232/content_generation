@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.example.auth_service.dto.ErrorResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.InvalidCredentialsException;
+import com.example.auth_service.exception.UserNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -25,6 +26,12 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(InvalidCredentialsException.class)
 	ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+			.body(new ErrorResponse(exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 			.body(new ErrorResponse(exception.getMessage(), Map.of()));
 	}
 
