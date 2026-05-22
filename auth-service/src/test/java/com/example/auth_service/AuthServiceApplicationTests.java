@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 	"JWT_EXPIRATION_MS=86400000"
 })
 @AutoConfigureMockMvc
-@Import(AuthServiceApplicationTests.ProtectedTestController.class)
+
 class AuthServiceApplicationTests {
 
 	@Autowired
@@ -219,6 +219,8 @@ class AuthServiceApplicationTests {
 			.andExpect(jsonPath("$.email").value("user@example.com"));
 	}
 
+
+
 	@Test
 	void usersEndpointRejectsRequestWithoutToken() throws Exception {
 		mockMvc.perform(get("/users/me"))
@@ -227,13 +229,21 @@ class AuthServiceApplicationTests {
 
 	@Test
 	void usersEndpointAllowsRequestWithValidToken() throws Exception {
-		String token = jwtService.generateToken(UUID.randomUUID(), "user@example.com");
+		UUID userId = UUID.randomUUID();
+		String email = "user@example.com";
+		User user = new User();
+		user.setId(userId);
+		user.setEmail(email);
+		// mock repository to return the user
+		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+		String token = jwtService.generateToken(userId, email);
 
 		mockMvc.perform(get("/users/me")
 			.header("Authorization", "Bearer " + token))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-			.andExpect(jsonPath("$.email").value("user@example.com"));
+			.andExpect(jsonPath("$.email").value(email));
 	}
 
 	@Test
@@ -241,21 +251,6 @@ class AuthServiceApplicationTests {
 		mockMvc.perform(get("/users/me")
 			.header("Authorization", "Bearer invalid-token"))
 			.andExpect(status().isUnauthorized());
-	}
-
-	@RestController
-	static class ProtectedTestController {
-
-		@GetMapping("/users/me")
-		java.util.Map<String, String> usersMe(org.springframework.security.core.Authentication authentication) {
-			com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal principal =
-				(com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal) authentication.getPrincipal();
-			return java.util.Map.of(
-				"email", principal.email(),
-				"userId", principal.userId().toString()
-			);
-		}
-
 	}
 
 }
