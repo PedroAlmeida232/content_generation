@@ -79,6 +79,10 @@ public class JwtService {
 		return claimsResolver.apply(extractAllClaims(token));
 	}
 
+	public long getExpirationMs() {
+		return expirationMs;
+	}
+
 	private Claims extractAllClaims(String token) {
 		return Jwts.parser()
 			.verifyWith(signingKey)

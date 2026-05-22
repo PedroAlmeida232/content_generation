@@ -6,9 +6,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.auth_service.domain.User;
+import com.example.auth_service.dto.LoginRequest;
+import com.example.auth_service.dto.LoginResponse;
 import com.example.auth_service.dto.RegisterRequest;
 import com.example.auth_service.dto.RegisterResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
+import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.repository.UserRepository;
 
 @Service
@@ -16,10 +19,12 @@ public class AuthService {
 
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final JwtService jwtService;
 
-	public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+	public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.jwtService = jwtService;
 	}
 
 	public RegisterResponse register(RegisterRequest request) {
@@ -41,6 +46,27 @@ public class AuthService {
 			savedUser.getId(),
 			savedUser.getEmail(),
 			savedUser.getName()
+		);
+	}
+
+	public LoginResponse login(LoginRequest request) {
+		String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+
+		User user = userRepository.findByEmail(normalizedEmail)
+			.orElseThrow(InvalidCredentialsException::new);
+
+		if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+			throw new InvalidCredentialsException();
+		}
+
+		String token = jwtService.generateToken(user.getId(), user.getEmail());
+
+		return new LoginResponse(
+			token,
+			"Bearer",
+			jwtService.getExpirationMs(),
+			user.getId(),
+			user.getEmail()
 		);
 	}
 
