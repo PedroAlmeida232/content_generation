@@ -1,6 +1,7 @@
 package com.example.auth_service;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -57,10 +58,83 @@ class AuthServiceApplicationTests {
 
 	@Test
 	void loginEndpointIsPublic() throws Exception {
-		mockMvc.perform(post("/auth/login"))
+		User user = new User();
+		user.setId(UUID.randomUUID());
+		user.setEmail("user@example.com");
+		user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("plain-text-password"));
+
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+		mockMvc.perform(post("/auth/login")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "user@example.com",
+				  "password": "plain-text-password"
+				}
+				"""))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-			.andExpect(jsonPath("$.status").value("public"));
+			.andExpect(jsonPath("$.token").isString())
+			.andExpect(jsonPath("$.tokenType").value("Bearer"))
+			.andExpect(jsonPath("$.userId").value(user.getId().toString()))
+			.andExpect(jsonPath("$.email").value("user@example.com"));
+	}
+
+	@Test
+	void loginEndpointRejectsUnknownEmail() throws Exception {
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+
+		mockMvc.perform(post("/auth/login")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "user@example.com",
+				  "password": "plain-text-password"
+				}
+				"""))
+			.andExpect(status().isUnauthorized())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Invalid email or password"));
+	}
+
+	@Test
+	void loginEndpointRejectsWrongPassword() throws Exception {
+		User user = new User();
+		user.setId(UUID.randomUUID());
+		user.setEmail("user@example.com");
+		user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("different-password"));
+
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+		mockMvc.perform(post("/auth/login")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "user@example.com",
+				  "password": "plain-text-password"
+				}
+				"""))
+			.andExpect(status().isUnauthorized())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Invalid email or password"));
+	}
+
+	@Test
+	void loginEndpointRejectsInvalidPayload() throws Exception {
+		mockMvc.perform(post("/auth/login")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "email": "not-an-email",
+				  "password": ""
+				}
+				"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Validation failed"))
+			.andExpect(jsonPath("$.errors.email").exists())
+			.andExpect(jsonPath("$.errors.password").exists());
 	}
 
 	@Test
@@ -169,11 +243,6 @@ class AuthServiceApplicationTests {
 
 	@RestController
 	static class ProtectedTestController {
-
-		@PostMapping("/auth/login")
-		ResponseEntity<Map<String, String>> login() {
-			return ResponseEntity.ok(Map.of("status", "public"));
-		}
 
 		@PostMapping("/auth/refresh")
 		ResponseEntity<Map<String, String>> refresh(org.springframework.security.core.Authentication authentication) {
