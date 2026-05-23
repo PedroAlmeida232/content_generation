@@ -179,6 +179,47 @@ body {
   color: rgba(34, 48, 74, 0.8);
 }
 
+.login-mode-switch {
+  display: inline-flex;
+  gap: var(--space-050);
+  margin-bottom: var(--space-300);
+  padding: var(--space-050);
+  border-radius: 999px;
+  background: rgba(34, 48, 74, 0.06);
+}
+
+.login-mode {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+  color: rgba(34, 48, 74, 0.75);
+  background: transparent;
+  cursor: pointer;
+}
+
+.login-mode.is-active {
+  color: var(--color-ink-strong);
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.login-error {
+  margin: 0 0 var(--space-200);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-100);
+  color: #7a1f1f;
+  background: rgba(185, 64, 64, 0.12);
+}
+
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 @media (max-width: 960px) {
   .login-shell {
     grid-template-columns: 1fr;

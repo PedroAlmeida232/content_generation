@@ -19,8 +19,8 @@
           <p class="login-eyebrow">Criacao assistida por IA</p>
           <h1 class="login-title">Transforme briefing em carrossel pronto para publicar.</h1>
           <p class="login-description">
-            Uma base visual para autenticação que prepara o fluxo entre contexto de marca,
-            prompts e geração de conteúdo sem depender da lógica de backend neste primeiro passo.
+            Autentique-se para conectar contexto de marca, prompts e geração de conteúdo
+            com os serviços de autenticação e IA da plataforma.
           </p>
         </div>
 
@@ -42,26 +42,62 @@
 
       <section class="login-panel" aria-label="Formulario de acesso">
         <div class="login-card">
-          <h1>Entrar</h1>
-          <p>Use seu e-mail e senha para acessar o workspace de geração de conteúdo.</p>
+          <div class="login-mode-switch" role="tablist" aria-label="Modo de acesso">
+            <button id="mode-login" class="login-mode is-active" type="button" role="tab">
+              Entrar
+            </button>
+            <button id="mode-register" class="login-mode" type="button" role="tab">
+              Criar conta
+            </button>
+          </div>
+
+          <h1 id="login-card-title">Entrar</h1>
+          <p id="login-card-description">
+            Use seu e-mail e senha para acessar o workspace de geração de conteúdo.
+          </p>
+
+          <p id="login-error" class="login-error" hidden></p>
 
           <form class="login-form">
+            <div class="login-field" id="name-field" hidden>
+              <label for="name">Nome</label>
+              <input id="name" name="name" type="text" placeholder="Seu nome" />
+            </div>
+
             <div class="login-field">
               <label for="email">E-mail</label>
-              <input id="email" name="email" type="email" placeholder="voce@empresa.com" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="voce@empresa.com"
+                required
+                autocomplete="email"
+              />
             </div>
 
             <div class="login-field">
               <label for="password">Senha</label>
-              <input id="password" name="password" type="password" placeholder="Digite sua senha" />
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Digite sua senha"
+                required
+                autocomplete="current-password"
+                minlength="8"
+              />
             </div>
 
             <button class="login-submit" type="submit">Acessar plataforma</button>
           </form>
 
-          <p class="login-meta">Layout inicial sem integração de autenticação nesta etapa.</p>
+          <p class="login-meta">
+            O token de sessão é armazenado localmente para chamadas autenticadas à API.
+          </p>
         </div>
       </section>
     </main>
+    <script type="module" src="../js/login-page.js"></script>
   </body>
 </html>
