@@ -5,11 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -27,15 +28,14 @@ import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-
 class AuthServiceTest {
 
-	private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
+	private static final String JWT_SECRET = "12345678901234567890123456789012";
+	private static final long EXPIRATION_MS = 86_400_000L;
+
+	private final UserRepository userRepository = mock(UserRepository.class);
 	private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-	private final String jwtSecret = "12345678901234567890123456789012";
-	private final JwtService jwtService = new JwtService(jwtSecret, 86400000);
+	private final JwtService jwtService = new JwtService(JWT_SECRET, EXPIRATION_MS);
 	private final AuthService authService = new AuthService(userRepository, passwordEncoder, jwtService);
 
 	@Test
@@ -64,6 +64,56 @@ class AuthServiceTest {
 	}
 
 	@Test
+	void registerSetsIsActiveTrue() {
+		RegisterRequest request = new RegisterRequest("user@example.com", "plain-text-password", "Pedro");
+
+		when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
+		when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		authService.register(request);
+
+		ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+		verify(userRepository).save(userCaptor.capture());
+		assertEquals(Boolean.TRUE, userCaptor.getValue().getIsActive());
+	}
+
+	@Test
+	void registerTrimsName() {
+		RegisterRequest request = new RegisterRequest("user@example.com", "plain-text-password", "  Pedro  ");
+
+		when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
+		when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+			User user = invocation.getArgument(0);
+			user.setId(UUID.randomUUID());
+			return user;
+		});
+
+		RegisterResponse response = authService.register(request);
+
+		ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+		verify(userRepository).save(userCaptor.capture());
+		assertEquals("Pedro", userCaptor.getValue().getName());
+		assertEquals("Pedro", response.name());
+	}
+
+	@Test
+	void registerReturnsSavedUserId() {
+		UUID expectedId = UUID.randomUUID();
+		RegisterRequest request = new RegisterRequest("user@example.com", "plain-text-password", "Pedro");
+
+		when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
+		when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+			User user = invocation.getArgument(0);
+			user.setId(expectedId);
+			return user;
+		});
+
+		RegisterResponse response = authService.register(request);
+
+		assertEquals(expectedId, response.id());
+	}
+
+	@Test
 	void registerRejectsDuplicateEmail() {
 		RegisterRequest request = new RegisterRequest("user@example.com", "plain-text-password", "Pedro");
 
@@ -75,43 +125,51 @@ class AuthServiceTest {
 
 	@Test
 	void loginReturnsJwtForValidCredentials() {
-		User user = new User();
-		user.setId(UUID.randomUUID());
-		user.setEmail("user@example.com");
-		user.setPasswordHash(passwordEncoder.encode("plain-text-password"));
+		User user = activeUser("user@example.com", "plain-text-password");
 
-		when(userRepository.findByEmail("user@example.com")).thenReturn(java.util.Optional.of(user));
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
 
 		LoginResponse response = authService.login(new LoginRequest(" USER@example.com ", "plain-text-password"));
 
 		assertEquals("Bearer", response.tokenType());
 		assertEquals(user.getId(), response.userId());
 		assertEquals(user.getEmail(), response.email());
-		assertEquals(86400000L, response.expiresIn());
+		assertEquals(EXPIRATION_MS, response.expiresIn());
 		assertTrue(jwtService.isTokenValid(response.token()));
 		assertEquals(user.getEmail(), jwtService.extractEmail(response.token()));
 		assertEquals(user.getId(), jwtService.extractUserId(response.token()));
+		verify(userRepository, never()).save(any(User.class));
+	}
+
+	@Test
+	void loginDoesNotPersistUser() {
+		User user = activeUser("user@example.com", "plain-text-password");
+
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+
+		authService.login(new LoginRequest("user@example.com", "plain-text-password"));
+
+		verify(userRepository, never()).save(any(User.class));
 	}
 
 	@Test
 	void loginRejectsUnknownEmail() {
-		when(userRepository.findByEmail("user@example.com")).thenReturn(java.util.Optional.empty());
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
 
 		assertThrows(InvalidCredentialsException.class,
 			() -> authService.login(new LoginRequest("user@example.com", "plain-text-password")));
+		verify(userRepository, never()).save(any(User.class));
 	}
 
 	@Test
 	void loginRejectsWrongPassword() {
-		User user = new User();
-		user.setId(UUID.randomUUID());
-		user.setEmail("user@example.com");
-		user.setPasswordHash(passwordEncoder.encode("different-password"));
+		User user = activeUser("user@example.com", "different-password");
 
-		when(userRepository.findByEmail("user@example.com")).thenReturn(java.util.Optional.of(user));
+		when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
 
 		assertThrows(InvalidCredentialsException.class,
 			() -> authService.login(new LoginRequest("user@example.com", "plain-text-password")));
+		verify(userRepository, never()).save(any(User.class));
 	}
 
 	@Test
@@ -123,10 +181,31 @@ class AuthServiceTest {
 		assertEquals("Bearer", response.tokenType());
 		assertEquals(principal.userId(), response.userId());
 		assertEquals(principal.email(), response.email());
-		assertEquals(86400000L, response.expiresIn());
+		assertEquals(EXPIRATION_MS, response.expiresIn());
 		assertTrue(jwtService.isTokenValid(response.token()));
 		assertEquals(principal.email(), jwtService.extractEmail(response.token()));
 		assertEquals(principal.userId(), jwtService.extractUserId(response.token()));
+	}
+
+	@Test
+	void refreshDoesNotCallUserRepository() {
+		JwtPrincipal principal = new JwtPrincipal(UUID.randomUUID(), "user@example.com");
+
+		authService.refresh(principal);
+
+		verify(userRepository, never()).findById(any());
+		verify(userRepository, never()).findByEmail(any());
+		verify(userRepository, never()).save(any(User.class));
+		verify(userRepository, never()).existsByEmail(any());
+	}
+
+	private User activeUser(String email, String rawPassword) {
+		User user = new User();
+		user.setId(UUID.randomUUID());
+		user.setEmail(email);
+		user.setPasswordHash(passwordEncoder.encode(rawPassword));
+		user.setIsActive(Boolean.TRUE);
+		return user;
 	}
 
 }
