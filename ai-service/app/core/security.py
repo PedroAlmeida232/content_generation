@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
 
@@ -78,10 +77,3 @@ def decode_token(token: str) -> TokenPayload:
         ) from ex
 
     return TokenPayload(user_id=user_id, email=str(email))
-
-
-def get_current_user(
-    authorization: Annotated[str | None, Header()] = None,
-) -> TokenPayload:
-    token = extract_bearer_token(authorization)
-    return decode_token(token)
