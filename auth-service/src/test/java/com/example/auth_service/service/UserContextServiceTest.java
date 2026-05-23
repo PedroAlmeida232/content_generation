@@ -17,6 +17,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import org.mapstruct.factory.Mappers;
+
 import com.example.auth_service.domain.User;
 import com.example.auth_service.domain.UserContext;
 import com.example.auth_service.dto.CreateContextRequest;
@@ -25,6 +27,7 @@ import com.example.auth_service.dto.UserContextResponse;
 import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserContextMapper;
 import com.example.auth_service.repository.UserContextRepository;
 import com.example.auth_service.repository.UserRepository;
 
@@ -32,7 +35,12 @@ class UserContextServiceTest {
 
 	private final UserContextRepository userContextRepository = org.mockito.Mockito.mock(UserContextRepository.class);
 	private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
-	private final UserContextService userContextService = new UserContextService(userContextRepository, userRepository);
+	private final UserContextMapper userContextMapper = Mappers.getMapper(UserContextMapper.class);
+	private final UserContextService userContextService = new UserContextService(
+		userContextRepository,
+		userRepository,
+		userContextMapper
+	);
 
 	@Test
 	void getContextsReturnsAllContextsForUser() {
