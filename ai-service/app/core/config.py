@@ -6,6 +6,15 @@ from dataclasses import dataclass
 class Settings:
     app_name: str = os.getenv("APP_NAME", "ai-service")
     redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    jwt_secret: str = os.getenv("JWT_SECRET", "")
+    jwt_algorithm: str = "HS256"
 
 
 settings = Settings()
+
+
+def require_jwt_secret() -> str:
+    secret = settings.jwt_secret.strip()
+    if not secret:
+        raise ValueError("JWT_SECRET must be configured")
+    return secret
