@@ -3,38 +3,11 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 from jose import jwt
 
 from app.core.config import settings
 from app.core.security import decode_token, extract_bearer_token
-from app.main import app
-
-TEST_SECRET = "12345678901234567890123456789012"
-OTHER_SECRET = "abcdefghijklmnopqrstuvwxyz123456"
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
-
-
-def encode_test_token(
-    secret: str = TEST_SECRET,
-    *,
-    user_id: str | None = None,
-    email: str = "user@example.com",
-    exp_delta: timedelta = timedelta(hours=1),
-) -> str:
-    now = datetime.now(timezone.utc)
-    claims = {
-        "sub": email,
-        "userId": user_id or str(uuid4()),
-        "iat": now,
-        "exp": now + exp_delta,
-    }
-
-    return jwt.encode(claims, secret, algorithm=settings.jwt_algorithm)
+from tests.conftest import OTHER_SECRET, TEST_SECRET, encode_test_token
 
 
 def test_decode_token_returns_payload() -> None:
@@ -97,38 +70,3 @@ def test_extract_bearer_token_requires_bearer_prefix() -> None:
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Invalid authorization header"
-
-
-def test_me_endpoint_returns_current_user(client: TestClient) -> None:
-    user_id = uuid4()
-    token = encode_test_token(user_id=str(user_id), email="user@example.com")
-
-    response = client.get("/me", headers={"Authorization": f"Bearer {token}"})
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "userId": str(user_id),
-        "email": "user@example.com",
-    }
-
-
-def test_me_endpoint_rejects_missing_authorization(client: TestClient) -> None:
-    response = client.get("/me")
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Authorization header required"
-
-
-def test_me_endpoint_rejects_invalid_token(client: TestClient) -> None:
-    response = client.get(
-        "/me",
-        headers={"Authorization": "Bearer invalid.jwt.token"},
-    )
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid or expired token"
-
-
-def test_health_and_styles_remain_public(client: TestClient) -> None:
-    assert client.get("/health").status_code == 200
-    assert client.get("/styles").status_code == 200
