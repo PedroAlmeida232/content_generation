@@ -14,6 +14,7 @@ import com.example.auth_service.dto.UserContextResponse;
 import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserContextMapper;
 import com.example.auth_service.repository.UserContextRepository;
 import com.example.auth_service.repository.UserRepository;
 
@@ -22,15 +23,21 @@ public class UserContextService {
 
 	private final UserContextRepository userContextRepository;
 	private final UserRepository userRepository;
+	private final UserContextMapper userContextMapper;
 
-	public UserContextService(UserContextRepository userContextRepository, UserRepository userRepository) {
+	public UserContextService(
+		UserContextRepository userContextRepository,
+		UserRepository userRepository,
+		UserContextMapper userContextMapper
+	) {
 		this.userContextRepository = userContextRepository;
 		this.userRepository = userRepository;
+		this.userContextMapper = userContextMapper;
 	}
 
 	public List<UserContextResponse> getContexts(UUID userId) {
 		return userContextRepository.findByUserId(userId).stream()
-			.map(this::mapToResponse)
+			.map(userContextMapper::toResponse)
 			.toList();
 	}
 
@@ -38,7 +45,7 @@ public class UserContextService {
 		UserContext context = userContextRepository.findById(contextId)
 			.filter(c -> c.getUser().getId().equals(userId))
 			.orElseThrow(() -> new ContextNotFoundException("Context not found with id: " + contextId));
-		return mapToResponse(context);
+		return userContextMapper.toResponse(context);
 	}
 
 	@Transactional
@@ -57,7 +64,7 @@ public class UserContextService {
 		context.setContextValue(request.contextValue() != null ? request.contextValue().trim() : null);
 
 		UserContext saved = userContextRepository.save(context);
-		return mapToResponse(saved);
+		return userContextMapper.toResponse(saved);
 	}
 
 	@Transactional
@@ -77,7 +84,7 @@ public class UserContextService {
 		context.setContextValue(request.contextValue() != null ? request.contextValue().trim() : null);
 
 		UserContext saved = userContextRepository.save(context);
-		return mapToResponse(saved);
+		return userContextMapper.toResponse(saved);
 	}
 
 	@Transactional
@@ -86,16 +93,6 @@ public class UserContextService {
 			.filter(c -> c.getUser().getId().equals(userId))
 			.orElseThrow(() -> new ContextNotFoundException("Context not found with id: " + contextId));
 		userContextRepository.delete(context);
-	}
-
-	private UserContextResponse mapToResponse(UserContext context) {
-		return new UserContextResponse(
-			context.getId(),
-			context.getContextKey(),
-			context.getContextValue(),
-			context.getCreatedAt(),
-			context.getUpdatedAt()
-		);
 	}
 
 }

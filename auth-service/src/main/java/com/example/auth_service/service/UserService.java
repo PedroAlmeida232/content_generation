@@ -11,21 +11,24 @@ import com.example.auth_service.dto.UpdateUserRequest;
 import com.example.auth_service.dto.UserResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserMapper;
 import com.example.auth_service.repository.UserRepository;
 
 @Service
 public class UserService {
 
 	private final UserRepository userRepository;
+	private final UserMapper userMapper;
 
-	public UserService(UserRepository userRepository) {
+	public UserService(UserRepository userRepository, UserMapper userMapper) {
 		this.userRepository = userRepository;
+		this.userMapper = userMapper;
 	}
 
 	public UserResponse getUserProfile(UUID userId) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new UserNotFoundException("User not found"));
-		return new UserResponse(user.getId(), user.getEmail(), user.getName());
+		return userMapper.toResponse(user);
 	}
 
 	@Transactional
@@ -46,7 +49,7 @@ public class UserService {
 
 		User savedUser = userRepository.save(user);
 
-		return new UserResponse(savedUser.getId(), savedUser.getEmail(), savedUser.getName());
+		return userMapper.toResponse(savedUser);
 	}
 
 }

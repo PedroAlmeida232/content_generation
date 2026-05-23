@@ -13,17 +13,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import org.mapstruct.factory.Mappers;
+
 import com.example.auth_service.domain.User;
 import com.example.auth_service.dto.UpdateUserRequest;
 import com.example.auth_service.dto.UserResponse;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.UserNotFoundException;
+import com.example.auth_service.mapper.UserMapper;
 import com.example.auth_service.repository.UserRepository;
 
 class UserServiceTest {
 
 	private final UserRepository userRepository = org.mockito.Mockito.mock(UserRepository.class);
-	private final UserService userService = new UserService(userRepository);
+	private final UserMapper userMapper = Mappers.getMapper(UserMapper.class);
+	private final UserService userService = new UserService(userRepository, userMapper);
 
 	@Test
 	void getUserProfileReturnsUserProfileForValidId() {
