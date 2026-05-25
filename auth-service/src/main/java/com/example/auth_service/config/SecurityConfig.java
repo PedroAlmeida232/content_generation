@@ -33,6 +33,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.GET, "/health").permitAll()
 				.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+				.requestMatchers(HttpMethod.POST, "/auth/refresh").authenticated()
 				.requestMatchers("/auth/**").permitAll()
 				.requestMatchers("/users/**", "/contexts/**", "/projects/**").authenticated()
 				.anyRequest().authenticated())
