@@ -1,14 +1,15 @@
-import { AuthError, login } from "./auth.js";
+import { AuthError, login, register } from "./auth.js";
 import {
   redirectAfterLogin,
   redirectAuthenticatedUser,
 } from "./auth-session.js?v=20260525b";
 
 const form = document.querySelector(".login-form");
+const nameInput = document.getElementById("name");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const submitButton = document.querySelector(".login-submit");
-const feedbackBox = document.getElementById("login-feedback");
+const feedbackBox = document.getElementById("register-feedback");
 
 let isSubmitting = false;
 
@@ -28,7 +29,7 @@ function setSubmittingState(submitting) {
 
   if (submitButton) {
     submitButton.disabled = submitting;
-    submitButton.textContent = submitting ? "Entrando..." : "Acessar plataforma";
+    submitButton.textContent = submitting ? "Criando conta..." : "Criar conta";
   }
 }
 
@@ -42,7 +43,7 @@ function formatAuthError(error) {
     return error.message;
   }
 
-  return "Nao foi possivel concluir a operacao. Tente novamente.";
+  return "Nao foi possivel concluir o cadastro. Tente novamente.";
 }
 
 function getRedirectTarget() {
@@ -69,17 +70,20 @@ async function handleSubmit(event) {
     return;
   }
 
+  const name = nameInput?.value.trim() || "";
   const email = emailInput?.value.trim() || "";
   const password = passwordInput?.value || "";
 
-  if (!email || !password) {
-    setFeedback("Informe e-mail e senha.");
+  if (!name || !email || !password) {
+    setFeedback("Informe nome, e-mail e senha.");
     return;
   }
 
   setSubmittingState(true);
 
   try {
+    await register({ name, email, password });
+    setFeedback("Conta criada com sucesso. Entrando na plataforma...", "success");
     await login({ email, password });
     setSubmittingState(false);
     redirectAfterLogin(getRedirectTarget());
@@ -95,5 +99,5 @@ async function handleSubmit(event) {
 form?.addEventListener("submit", handleSubmit);
 
 if (redirectAuthenticatedUser(getRedirectTarget())) {
-  // Authenticated users should not stay on the login screen.
+  // Authenticated users should not stay on the register screen.
 }

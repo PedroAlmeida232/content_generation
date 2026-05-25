@@ -1,6 +1,7 @@
 import * as storage from "./storage.js";
 
 const AUTH_API_BASE = "/api/auth";
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 export class AuthError extends Error {
   constructor(message, { status = 0, fields = {} } = {}) {
@@ -27,21 +28,43 @@ async function parseAuthResponse(response) {
   return body;
 }
 
+async function performAuthRequest(path, payload) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${AUTH_API_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    return await parseAuthResponse(response);
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new AuthError("A requisicao demorou mais do que o esperado. Tente novamente.");
+    }
+
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
+    throw new AuthError("Nao foi possivel conectar ao servico de autenticacao.");
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 /**
  * @param {{ email: string, password: string }} credentials
  * @returns {Promise<{ userId: string, email: string, expiresIn: number, tokenType: string }>}
  */
 export async function login({ email, password }) {
-  const response = await fetch(`${AUTH_API_BASE}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = await parseAuthResponse(response);
+  const data = await performAuthRequest("/auth/login", { email, password });
   storage.saveToken(data.token);
 
   return {
@@ -57,16 +80,7 @@ export async function login({ email, password }) {
  * @returns {Promise<{ id: string, email: string, name: string }>}
  */
 export async function register({ email, password, name }) {
-  const response = await fetch(`${AUTH_API_BASE}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ email, password, name }),
-  });
-
-  return parseAuthResponse(response);
+  return performAuthRequest("/auth/register", { email, password, name });
 }
 
 export function logout() {

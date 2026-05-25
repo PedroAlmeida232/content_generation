@@ -69,6 +69,15 @@ export function redirectAuthenticatedUser(nextPath) {
   return true;
 }
 
+export function redirectAfterLogin(nextPath) {
+  const session = getAuthenticatedSession();
+  if (!session) {
+    throw new Error("Nao foi possivel validar a sessao autenticada.");
+  }
+
+  window.location.replace(nextPath);
+}
+
 export function requireAuthenticatedSession(nextPath = `${window.location.pathname}${window.location.search}`) {
   const session = getAuthenticatedSession();
   if (!session) {

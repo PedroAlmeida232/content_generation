@@ -179,33 +179,6 @@ body {
   color: rgba(34, 48, 74, 0.8);
 }
 
-.login-mode-switch {
-  display: inline-flex;
-  gap: var(--space-050);
-  margin-bottom: var(--space-300);
-  padding: var(--space-050);
-  border-radius: 999px;
-  background: rgba(34, 48, 74, 0.06);
-}
-
-.login-mode {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.55rem 1rem;
-  font: inherit;
-  font-size: var(--font-size-100);
-  font-weight: var(--font-weight-semibold);
-  color: rgba(34, 48, 74, 0.75);
-  background: transparent;
-  cursor: pointer;
-}
-
-.login-mode.is-active {
-  color: var(--color-ink-strong);
-  background: #fff;
-  box-shadow: var(--shadow-card);
-}
-
 .login-feedback {
   margin: 0 0 var(--space-200);
   padding: 0.75rem 1rem;
@@ -226,6 +199,19 @@ body {
 .login-submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.login-switch-link {
+  margin-top: var(--space-250, 1.25rem);
+  margin-bottom: 0;
+  font-size: var(--font-size-100);
+  color: rgba(34, 48, 74, 0.82);
+}
+
+.login-switch-link a {
+  color: var(--color-primary-strong);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
 }
 
 @media (max-width: 960px) {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Content Generation | Login</title>
+    <title>Content Generation | Criar conta</title>
     <link rel="stylesheet" href="../css/design-tokens.css" />
     <link rel="stylesheet" href="../css/login.css" />
   </head>
@@ -17,39 +17,52 @@
 
         <div class="login-hero-copy">
           <p class="login-eyebrow">Criacao assistida por IA</p>
-          <h1 class="login-title">Transforme briefing em carrossel pronto para publicar.</h1>
+          <h1 class="login-title">Crie sua conta para organizar contexto, projetos e geracao em um so lugar.</h1>
           <p class="login-description">
-            Autentique-se para conectar contexto de marca, prompts e geracao de conteudo
-            com os servicos de autenticacao e IA da plataforma.
+            O cadastro prepara sua entrada no workspace para conectar autenticacao,
+            contexto de marca e fluxos de criacao com apoio da plataforma.
           </p>
         </div>
 
         <ul class="login-highlights" aria-label="Destaques da plataforma">
           <li>
-            <strong>Marca</strong>
-            Paleta, tom e referencias centralizados.
+            <strong>Identidade</strong>
+            Defina nome, acesso e base de trabalho para o seu workspace.
           </li>
           <li>
-            <strong>Ritmo</strong>
-            Estrutura pronta para conteudo serial e recorrente.
+            <strong>Fluxo</strong>
+            Estruture contextos e projetos antes de acionar a IA.
           </li>
           <li>
-            <strong>Entrega</strong>
-            Base visual limpa para evoluir o produto com seguranca.
+            <strong>Evolucao</strong>
+            Use uma base pronta para iterar no frontend com seguranca.
           </li>
         </ul>
       </section>
 
-      <section class="login-panel" aria-label="Formulario de acesso">
+      <section class="login-panel" aria-label="Formulario de cadastro">
         <div class="login-card">
-          <h1>Entrar</h1>
+          <h1>Criar conta</h1>
           <p>
-            Use seu e-mail e senha para acessar o workspace de geracao de conteudo.
+            Informe seu nome, e-mail e senha para acessar o workspace de geracao de conteudo.
           </p>
 
-          <p id="login-feedback" class="login-feedback" aria-live="polite" hidden></p>
+          <p id="register-feedback" class="login-feedback" aria-live="polite" hidden></p>
 
           <form class="login-form">
+            <div class="login-field">
+              <label for="name">Nome</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Seu nome"
+                autocomplete="name"
+                required
+                minlength="2"
+              />
+            </div>
+
             <div class="login-field">
               <label for="email">E-mail</label>
               <input
@@ -57,8 +70,8 @@
                 name="email"
                 type="email"
                 placeholder="voce@empresa.com"
-                required
                 autocomplete="email"
+                required
               />
             </div>
 
@@ -68,27 +81,27 @@
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Digite sua senha"
+                placeholder="Crie uma senha"
+                autocomplete="new-password"
                 required
-                autocomplete="current-password"
                 minlength="8"
               />
             </div>
 
-            <button class="login-submit" type="submit">Acessar plataforma</button>
+            <button class="login-submit" type="submit">Criar conta</button>
           </form>
 
           <p class="login-switch-link">
-            Ainda nao tem conta?
-            <a href="/pages/register.html">Criar conta</a>
+            Ja tem conta?
+            <a href="/pages/login.html">Entrar</a>
           </p>
 
           <p class="login-meta">
-            O token de sessao e armazenado localmente para chamadas autenticadas a API.
+            Depois do cadastro, a sessao e iniciada automaticamente e voce segue para a dashboard.
           </p>
         </div>
       </section>
     </main>
-    <script type="module" src="../js/login-page.js?v=20260525"></script>
+    <script type="module" src="../js/register-page.js?v=20260525"></script>
   </body>
 </html>
