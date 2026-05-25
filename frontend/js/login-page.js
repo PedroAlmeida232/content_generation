@@ -1,4 +1,4 @@
-import { AuthError, login, register } from "./auth.js";
+import { AuthError, getToken, login, register } from "./auth.js";
 
 const form = document.querySelector(".login-form");
 const emailInput = document.getElementById("email");
@@ -6,23 +6,48 @@ const passwordInput = document.getElementById("password");
 const nameInput = document.getElementById("name");
 const nameField = document.getElementById("name-field");
 const submitButton = document.querySelector(".login-submit");
-const errorBox = document.getElementById("login-error");
+const feedbackBox = document.getElementById("login-feedback");
 const modeLoginButton = document.getElementById("mode-login");
 const modeRegisterButton = document.getElementById("mode-register");
 const cardTitle = document.getElementById("login-card-title");
 const cardDescription = document.getElementById("login-card-description");
 
 let mode = "login";
+let isSubmitting = false;
 
-function setError(message) {
-  if (!errorBox) {
+function setFeedback(message, tone = "error") {
+  if (!feedbackBox) {
     return;
   }
-  errorBox.textContent = message;
-  errorBox.hidden = !message;
+  feedbackBox.textContent = message;
+  feedbackBox.hidden = !message;
+  feedbackBox.classList.toggle("is-error", tone === "error");
+  feedbackBox.classList.toggle("is-success", tone === "success");
+}
+
+function setSubmittingState(submitting) {
+  isSubmitting = submitting;
+
+  if (submitButton) {
+    submitButton.disabled = submitting;
+    submitButton.textContent = submitting
+      ? mode === "register"
+        ? "Criando conta..."
+        : "Entrando..."
+      : mode === "register"
+        ? "Criar conta"
+        : "Acessar plataforma";
+  }
+
+  modeLoginButton.disabled = submitting;
+  modeRegisterButton.disabled = submitting;
 }
 
 function setMode(nextMode) {
+  if (isSubmitting) {
+    return;
+  }
+
   mode = nextMode;
   const isRegister = mode === "register";
 
@@ -31,6 +56,9 @@ function setMode(nextMode) {
   }
   if (nameInput) {
     nameInput.required = isRegister;
+  }
+  if (passwordInput) {
+    passwordInput.autocomplete = isRegister ? "new-password" : "current-password";
   }
 
   if (cardTitle) {
@@ -41,13 +69,12 @@ function setMode(nextMode) {
       ? "Cadastre-se para acessar o workspace de geração de conteúdo."
       : "Use seu e-mail e senha para acessar o workspace de geração de conteúdo.";
   }
-  if (submitButton) {
-    submitButton.textContent = isRegister ? "Criar conta" : "Acessar plataforma";
-  }
-
   modeLoginButton?.classList.toggle("is-active", !isRegister);
   modeRegisterButton?.classList.toggle("is-active", isRegister);
-  setError("");
+  modeLoginButton?.setAttribute("aria-selected", String(!isRegister));
+  modeRegisterButton?.setAttribute("aria-selected", String(isRegister));
+  setFeedback("");
+  setSubmittingState(false);
 }
 
 function formatAuthError(error) {
@@ -62,47 +89,68 @@ function formatAuthError(error) {
   return "Não foi possível concluir a operação. Tente novamente.";
 }
 
+function getRedirectTarget() {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get("next");
+
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return "/";
+  }
+
+  return next;
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
-  setError("");
+  setFeedback("");
+
+  if (!form?.checkValidity()) {
+    form?.reportValidity();
+    return;
+  }
 
   const email = emailInput?.value.trim() || "";
   const password = passwordInput?.value || "";
 
   if (!email || !password) {
-    setError("Informe e-mail e senha.");
+    setFeedback("Informe e-mail e senha.");
     return;
   }
 
   if (mode === "register") {
     const name = nameInput?.value.trim() || "";
     if (!name) {
-      setError("Informe seu nome.");
+      setFeedback("Informe seu nome.");
       return;
     }
   }
 
-  submitButton.disabled = true;
+  setSubmittingState(true);
 
   try {
     if (mode === "register") {
       const name = nameInput.value.trim();
       await register({ email, password, name });
+      setFeedback("Conta criada com sucesso. Entrando na plataforma...", "success");
       await login({ email, password });
     } else {
       await login({ email, password });
     }
 
-    window.location.href = "/";
+    window.location.href = getRedirectTarget();
   } catch (error) {
-    setError(formatAuthError(error));
+    setFeedback(formatAuthError(error));
   } finally {
-    submitButton.disabled = false;
+    setSubmittingState(false);
   }
 }
 
 modeLoginButton?.addEventListener("click", () => setMode("login"));
 modeRegisterButton?.addEventListener("click", () => setMode("register"));
 form?.addEventListener("submit", handleSubmit);
+
+if (getToken()) {
+  window.location.replace(getRedirectTarget());
+}
 
 setMode("login");
