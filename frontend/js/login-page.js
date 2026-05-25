@@ -94,7 +94,7 @@ function getRedirectTarget() {
   const next = params.get("next");
 
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/";
+    return "/pages/dashboard.html";
   }
 
   return next;
