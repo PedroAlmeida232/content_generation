@@ -29,7 +29,7 @@ def test_slide_text_prompt_template_is_langchain_prompt_template() -> None:
     assert isinstance(SLIDE_TEXT_PROMPT_TEMPLATE, PromptTemplate)
 
 
-def test_build_slide_text_messages_includes_carousel_prompt_and_count() -> None:
+def test_slide_text_messages_include_carousel_prompt_and_count() -> None:
     carousel_prompt = "Roteiro sobre lancamento de produto"
     slide_count = 4
 
