@@ -206,13 +206,21 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-.login-error {
+.login-feedback {
   margin: 0 0 var(--space-200);
   padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-100);
+}
+
+.login-feedback.is-error {
   color: #7a1f1f;
   background: rgba(185, 64, 64, 0.12);
+}
+
+.login-feedback.is-success {
+  color: #1f5c3d;
+  background: rgba(74, 163, 113, 0.14);
 }
 
 .login-submit:disabled {

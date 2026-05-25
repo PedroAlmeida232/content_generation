@@ -32,8 +32,9 @@ public class SecurityConfig {
 				.authenticationEntryPoint((request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.GET, "/health").permitAll()
-				.requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
+				.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
 				.requestMatchers(HttpMethod.POST, "/auth/refresh").authenticated()
+				.requestMatchers("/auth/**").permitAll()
 				.requestMatchers("/users/**", "/contexts/**", "/projects/**").authenticated()
 				.anyRequest().authenticated())
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
