@@ -84,7 +84,10 @@ def build_carousel_prompt(
         raise ValueError("style must be a non-empty string")
 
     return CAROUSEL_PROMPT_TEMPLATE.format(
-        context_name=normalize_optional_text(context_name, DEFAULT_CONTEXT_NAME),
+        context_name=normalize_optional_text(
+            context_name,
+            DEFAULT_CONTEXT_NAME,
+        ),
         tone=normalize_optional_text(tone, DEFAULT_TONE),
         color_palette=format_color_palette(color_palette),
         style=normalized_style,
