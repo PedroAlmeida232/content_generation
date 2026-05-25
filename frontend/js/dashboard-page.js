@@ -1,52 +1,19 @@
-import { getToken, logout } from "./auth.js";
+import { logout } from "./auth.js";
+import { redirectToLogin, requireAuthenticatedSession } from "./auth-session.js";
 
 const logoutButton = document.getElementById("dashboard-logout");
 const userEmailElement = document.getElementById("dashboard-user-email");
 
-function buildLoginRedirect() {
-  const next = encodeURIComponent("/pages/dashboard.html");
-  return `/pages/login.html?next=${next}`;
-}
-
-function readStoredEmail() {
-  try {
-    const token = getToken();
-    if (!token) {
-      return null;
-    }
-
-    const [, payload] = token.split(".");
-    if (!payload) {
-      return null;
-    }
-
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    const decoded = atob(padded);
-    const claims = JSON.parse(decoded);
-    return typeof claims.sub === "string" && claims.sub.trim() ? claims.sub.trim() : null;
-  } catch (error) {
-    return null;
-  }
-}
-
-function redirectToLogin() {
-  window.location.replace(buildLoginRedirect());
-}
-
 function handleLogout() {
   logout();
-  redirectToLogin();
+  redirectToLogin("/pages/dashboard.html");
 }
 
-const token = getToken();
+const session = requireAuthenticatedSession("/pages/dashboard.html");
 
-if (!token) {
-  redirectToLogin();
-} else {
-  const email = readStoredEmail();
-  if (email && userEmailElement) {
-    userEmailElement.textContent = email;
+if (session) {
+  if (session.email && userEmailElement) {
+    userEmailElement.textContent = session.email;
   }
   logoutButton?.addEventListener("click", handleLogout);
 }

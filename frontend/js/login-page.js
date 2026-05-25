@@ -1,4 +1,5 @@
-import { AuthError, getToken, login, register } from "./auth.js";
+import { AuthError, login, register } from "./auth.js";
+import { redirectAuthenticatedUser } from "./auth-session.js";
 
 const form = document.querySelector(".login-form");
 const emailInput = document.getElementById("email");
@@ -149,8 +150,8 @@ modeLoginButton?.addEventListener("click", () => setMode("login"));
 modeRegisterButton?.addEventListener("click", () => setMode("register"));
 form?.addEventListener("submit", handleSubmit);
 
-if (getToken()) {
-  window.location.replace(getRedirectTarget());
+if (redirectAuthenticatedUser(getRedirectTarget())) {
+  // Authenticated users should not stay on the login screen.
 }
 
 setMode("login");
