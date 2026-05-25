@@ -4,10 +4,13 @@ from app.schemas.carousel import (
     JobStatus,
     SlideResult,
 )
+from app.schemas.slide_text import CarouselSlidesText, SlideText
 
 __all__ = [
     "CarouselRequest",
     "CarouselResponse",
+    "CarouselSlidesText",
     "JobStatus",
     "SlideResult",
+    "SlideText",
 ]
