@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Generation | Dashboard</title>
+    <link rel="stylesheet" href="../css/design-tokens.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+  </head>
+  <body class="dashboard-body">
+    <div class="dashboard-shell">
+      <header class="dashboard-header">
+        <a class="dashboard-brand" href="/" aria-label="Content Generation home">
+          <span class="dashboard-brand-mark">CG</span>
+          <span>Content Generation</span>
+        </a>
+
+        <nav class="dashboard-nav" aria-label="Navegacao principal">
+          <a class="is-active" href="/pages/dashboard.html" aria-current="page">Dashboard</a>
+          <a href="#projetos">Projetos</a>
+          <a href="#editor">Editor</a>
+          <a href="#contextos">Contextos</a>
+        </nav>
+
+        <div class="dashboard-session">
+          <p class="dashboard-session-copy">
+            Sessao ativa para <strong id="dashboard-user-email">criador@workspace</strong>
+          </p>
+          <button id="dashboard-logout" class="dashboard-logout" type="button">Sair</button>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <section class="dashboard-hero" aria-label="Resumo do workspace">
+          <div class="dashboard-hero-copy">
+            <p class="dashboard-eyebrow">Workspace autenticado</p>
+            <h1>Seu ponto de partida para transformar briefing em carrosseis com consistencia.</h1>
+            <p class="dashboard-lead">
+              Esta dashboard organiza os proximos passos da experiencia: abrir o editor,
+              revisar contextos de marca e acompanhar a evolucao dos projetos gerados.
+            </p>
+            <div class="dashboard-hero-actions">
+              <a class="dashboard-primary-action" href="#editor">Abrir fluxo de criacao</a>
+              <a class="dashboard-secondary-action" href="#projetos">Ver estrutura de projetos</a>
+            </div>
+          </div>
+
+          <aside class="dashboard-hero-panel" aria-label="Indicadores iniciais">
+            <div class="dashboard-stat">
+              <span class="dashboard-stat-label">Projetos ativos</span>
+              <strong>0</strong>
+              <p>O shell esta pronto para receber listagem real nas proximas tasks.</p>
+            </div>
+            <div class="dashboard-stat">
+              <span class="dashboard-stat-label">Contextos mapeados</span>
+              <strong>0</strong>
+              <p>Prepare paleta, tom e referencias antes de iniciar a geracao.</p>
+            </div>
+          </aside>
+        </section>
+
+        <section class="dashboard-shortcuts" aria-labelledby="dashboard-shortcuts-title">
+          <div class="dashboard-section-heading">
+            <p class="dashboard-section-kicker">Atalhos</p>
+            <h2 id="dashboard-shortcuts-title">Acoes principais do workspace</h2>
+          </div>
+
+          <div class="dashboard-shortcut-grid">
+            <article class="dashboard-card" id="editor">
+              <span class="dashboard-card-index">01</span>
+              <h3>Comecar um novo carrossel</h3>
+              <p>Use este ponto como entrada para briefing, estilo visual e configuracao de slides.</p>
+              <a href="#">Abrir editor</a>
+            </article>
+
+            <article class="dashboard-card" id="contextos">
+              <span class="dashboard-card-index">02</span>
+              <h3>Revisar contexto de marca</h3>
+              <p>Centralize tom de voz, paleta, referencias e direcao criativa antes da geracao.</p>
+              <a href="#">Gerenciar contextos</a>
+            </article>
+
+            <article class="dashboard-card">
+              <span class="dashboard-card-index">03</span>
+              <h3>Configurar camada de API</h3>
+              <p>O frontend ja tem autenticacao e client HTTP prontos para conectar dados reais.</p>
+              <a href="#">Ver integracoes</a>
+            </article>
+          </div>
+        </section>
+
+        <section class="dashboard-content-grid">
+          <section class="dashboard-panel dashboard-projects" id="projetos" aria-labelledby="dashboard-projects-title">
+            <div class="dashboard-section-heading">
+              <p class="dashboard-section-kicker">Projetos</p>
+              <h2 id="dashboard-projects-title">Projetos recentes</h2>
+            </div>
+
+            <div class="dashboard-empty-state">
+              <strong>Nenhum projeto exibido por enquanto.</strong>
+              <p>
+                Esta area foi preparada para receber cards reais vindos do backend com status,
+                estilo escolhido e historico de geracao.
+              </p>
+              <a class="dashboard-inline-action" href="#editor">Criar primeiro projeto</a>
+            </div>
+          </section>
+
+          <aside class="dashboard-panel dashboard-next-steps" aria-labelledby="dashboard-next-steps-title">
+            <div class="dashboard-section-heading">
+              <p class="dashboard-section-kicker">Proximos passos</p>
+              <h2 id="dashboard-next-steps-title">Como evoluir este shell</h2>
+            </div>
+
+            <ol class="dashboard-steps">
+              <li>Conectar perfil e projetos com `apiClient.js`.</li>
+              <li>Popular cards com dados de `/projects` e `/contexts`.</li>
+              <li>Adicionar CTA real para o editor e para estados de geracao.</li>
+            </ol>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="../js/dashboard-page.js"></script>
+  </body>
+</html>
