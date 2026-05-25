@@ -1,5 +1,8 @@
 import { logout } from "./auth.js";
-import { redirectToLogin, requireAuthenticatedSession } from "./auth-session.js";
+import {
+  redirectToLogin,
+  requireAuthenticatedSession,
+} from "./auth-session.js?v=20260525b";
 
 const logoutButton = document.getElementById("dashboard-logout");
 const userEmailElement = document.getElementById("dashboard-user-email");
