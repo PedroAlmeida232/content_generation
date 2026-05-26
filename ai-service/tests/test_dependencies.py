@@ -62,3 +62,59 @@ def test_openapi_documents_bearer_security_on_me(client: TestClient) -> None:
     assert "security" in me_get
     assert me_get["security"] == [{"HTTPBearer": []}]
     assert "HTTPBearer" in schema["components"]["securitySchemes"]
+
+
+# ---------------------------------------------------------------------------
+# get_openai_api_key dependency
+# ---------------------------------------------------------------------------
+
+_VALID_KEY = "sk-test-openai-key-1234"
+_VALID_PROMPT = "A minimalist mountain landscape"
+_FAKE_URL = "https://oaidalleapiprodscus.blob.core.windows.net/fake.png"
+
+
+def test_generate_route_rejects_missing_openai_key(
+    client: TestClient,
+    authorization_header,
+) -> None:
+    from tests.conftest import encode_test_token
+
+    token = encode_test_token()
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers=authorization_header(token),
+    )
+
+    assert response.status_code == 400
+    assert "X-OpenAI-Key" in response.json()["detail"]
+
+
+def test_generate_route_rejects_empty_openai_key(
+    client: TestClient,
+    authorization_header,
+) -> None:
+    from tests.conftest import encode_test_token
+
+    token = encode_test_token()
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers={
+            **authorization_header(token),
+            "X-OpenAI-Key": "   ",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "X-OpenAI-Key" in response.json()["detail"]
+
+
+def test_generate_route_rejects_missing_jwt(client: TestClient) -> None:
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers={"X-OpenAI-Key": _VALID_KEY},
+    )
+
+    assert response.status_code == 401

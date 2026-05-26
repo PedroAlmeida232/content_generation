@@ -9,6 +9,7 @@ from pydantic import (
     model_validator,
 )
 
+
 from app.api.routes.styles import VISUAL_STYLES
 
 MIN_SLIDES = 1
@@ -112,3 +113,25 @@ class CarouselResponse(BaseModel):
             ]
         }
     }
+
+
+class SlideImageRequest(BaseModel):
+    """Payload para POST /generate/slide-image."""
+
+    image_prompt: str = Field(min_length=1, max_length=4000)
+    model: str = Field(default="dall-e-3")
+    size: str = Field(default="1024x1024")
+    quality: str = Field(default="standard")
+
+    @field_validator("image_prompt", mode="before")
+    @classmethod
+    def strip_image_prompt(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
+class SlideImageResponse(BaseModel):
+    """Resposta de POST /generate/slide-image."""
+
+    image_url: HttpUrl
