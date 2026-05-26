@@ -9,7 +9,12 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.services.openai_client import OpenAIClientError
+from app.services.openai_client import (
+    ContentFilterClientError,
+    InvalidAPIKeyClientError,
+    OpenAIClientError,
+    RateLimitClientError,
+)
 from tests.conftest import encode_test_token
 
 _VALID_KEY = "sk-test-key-abcde"
@@ -221,3 +226,65 @@ def test_generate_rejects_missing_image_prompt(
     )
 
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Typed OpenAI error → HTTP status mapping (S2-006)
+# ---------------------------------------------------------------------------
+
+
+@patch(
+    _GENERATE_PATH,
+    side_effect=RateLimitClientError("rate limit"),
+)
+def test_generate_returns_429_on_rate_limit(
+    mock_gen,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 429
+    assert "rate limit" in response.json()["detail"].lower()
+
+
+@patch(
+    _GENERATE_PATH,
+    side_effect=InvalidAPIKeyClientError("invalid key"),
+)
+def test_generate_returns_401_on_invalid_key(
+    mock_gen,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 401
+    assert "api key" in response.json()["detail"].lower()
+
+
+@patch(
+    _GENERATE_PATH,
+    side_effect=ContentFilterClientError("content filter"),
+)
+def test_generate_returns_400_on_content_filter(
+    mock_gen,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        "/generate/slide-image",
+        json={"image_prompt": _VALID_PROMPT},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 400
+    assert "content filter" in response.json()["detail"].lower()

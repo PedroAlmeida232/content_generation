@@ -1,9 +1,13 @@
 from unittest.mock import MagicMock, patch
 
+import openai
 import pytest
 
 from app.services.openai_client import (
+    ContentFilterClientError,
+    InvalidAPIKeyClientError,
     OpenAIClientError,
+    RateLimitClientError,
     _MAX_PROMPT_LENGTH,
     generate_slide_image,
 )
@@ -154,3 +158,89 @@ def test_generate_slide_image_strips_prompt_whitespace() -> None:
             openai_api_key=_VALID_KEY,
             image_prompt="\t  \n",
         )
+
+
+# ---------------------------------------------------------------------------
+# Typed OpenAI SDK error mapping (S2-006)
+# ---------------------------------------------------------------------------
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_raises_rate_limit_error(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.images.generate.side_effect = openai.RateLimitError(
+        message="rate limit exceeded",
+        response=MagicMock(status_code=429),
+        body={},
+    )
+    mock_openai_cls.return_value = mock_client
+
+    with pytest.raises(RateLimitClientError):
+        generate_slide_image(
+            openai_api_key=_VALID_KEY,
+            image_prompt=_VALID_PROMPT,
+        )
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_raises_invalid_api_key_error(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.images.generate.side_effect = openai.AuthenticationError(
+        message="invalid api key",
+        response=MagicMock(status_code=401),
+        body={},
+    )
+    mock_openai_cls.return_value = mock_client
+
+    with pytest.raises(InvalidAPIKeyClientError):
+        generate_slide_image(
+            openai_api_key=_VALID_KEY,
+            image_prompt=_VALID_PROMPT,
+        )
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_raises_content_filter_error(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    bad_req = openai.BadRequestError(
+        message="content policy violation",
+        response=MagicMock(status_code=400),
+        body={},
+    )
+    bad_req.code = "content_policy_violation"
+    mock_client.images.generate.side_effect = bad_req
+    mock_openai_cls.return_value = mock_client
+
+    with pytest.raises(ContentFilterClientError):
+        generate_slide_image(
+            openai_api_key=_VALID_KEY,
+            image_prompt=_VALID_PROMPT,
+        )
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_raises_generic_error_on_bad_request_no_code(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    bad_req = openai.BadRequestError(
+        message="some other bad request",
+        response=MagicMock(status_code=400),
+        body={},
+    )
+    bad_req.code = None
+    mock_client.images.generate.side_effect = bad_req
+    mock_openai_cls.return_value = mock_client
+
+    with pytest.raises(OpenAIClientError) as exc_info:
+        generate_slide_image(
+            openai_api_key=_VALID_KEY,
+            image_prompt=_VALID_PROMPT,
+        )
+    assert not isinstance(exc_info.value, ContentFilterClientError)

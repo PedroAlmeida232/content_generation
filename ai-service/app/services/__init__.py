@@ -6,7 +6,10 @@ from app.services.image_prompt_chain import (
     run_image_prompt_chain,
 )
 from app.services.openai_client import (
+    ContentFilterClientError,
+    InvalidAPIKeyClientError,
     OpenAIClientError,
+    RateLimitClientError,
     generate_slide_image,
 )
 from app.services.prompt_builder import (
@@ -24,10 +27,13 @@ from app.services.slide_text_chain import (
 
 __all__ = [
     "CAROUSEL_PROMPT_TEMPLATE",
+    "ContentFilterClientError",
     "IMAGE_PROMPT_TEMPLATE",
     "ImagePromptChain",
     "ImagePromptChainError",
+    "InvalidAPIKeyClientError",
     "OpenAIClientError",
+    "RateLimitClientError",
     "SLIDE_TEXT_PROMPT_TEMPLATE",
     "SlideTextChain",
     "SlideTextChainError",

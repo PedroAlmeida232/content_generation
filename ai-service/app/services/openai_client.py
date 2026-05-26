@@ -8,7 +8,19 @@ _MAX_PROMPT_LENGTH = 4000
 
 
 class OpenAIClientError(Exception):
-    """Erro ao chamar a API da OpenAI (DALL-E 3)."""
+    """Erro base ao chamar a API da OpenAI (DALL-E 3)."""
+
+
+class RateLimitClientError(OpenAIClientError):
+    """Rate-limit ou quota esgotada na API da OpenAI."""
+
+
+class InvalidAPIKeyClientError(OpenAIClientError):
+    """Chave de API da OpenAI invalida ou revogada."""
+
+
+class ContentFilterClientError(OpenAIClientError):
+    """Conteudo bloqueado pelo filtro de conteudo da OpenAI."""
 
 
 def _validate_api_key(openai_api_key: str) -> str:
@@ -71,6 +83,23 @@ def generate_slide_image(
             quality=quality,
             n=1,
         )
+    except openai.RateLimitError as error:
+        raise RateLimitClientError(
+            "OpenAI rate limit reached"
+        ) from error
+    except openai.AuthenticationError as error:
+        raise InvalidAPIKeyClientError(
+            "Invalid or expired OpenAI API key"
+        ) from error
+    except openai.BadRequestError as error:
+        code = getattr(error, "code", None)
+        if code == "content_policy_violation":
+            raise ContentFilterClientError(
+                "Prompt rejected by OpenAI content filter"
+            ) from error
+        raise OpenAIClientError(
+            "Failed to generate slide image via DALL-E 3"
+        ) from error
     except Exception as error:
         raise OpenAIClientError(
             "Failed to generate slide image via DALL-E 3"

@@ -2,7 +2,13 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import CurrentUser, OpenAIKey
 from app.schemas.carousel import SlideImageRequest, SlideImageResponse
-from app.services.openai_client import OpenAIClientError, generate_slide_image
+from app.services.openai_client import (
+    ContentFilterClientError,
+    InvalidAPIKeyClientError,
+    OpenAIClientError,
+    RateLimitClientError,
+    generate_slide_image,
+)
 
 router = APIRouter(prefix="/generate", tags=["generation"])
 
@@ -35,6 +41,27 @@ def generate_slide_image_route(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
+        ) from exc
+    except RateLimitClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "OpenAI rate limit reached. "
+                "Please try again later."
+            ),
+        ) from exc
+    except InvalidAPIKeyClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OpenAI API key.",
+        ) from exc
+    except ContentFilterClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Image prompt was rejected by "
+                "OpenAI content filter."
+            ),
         ) from exc
     except OpenAIClientError as exc:
         raise HTTPException(
