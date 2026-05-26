@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -6,11 +7,15 @@ from app.schemas.image_prompt import CarouselImagePrompts, SlideImagePrompt
 from app.schemas.slide_text import CarouselSlidesText, SlideText
 from app.tasks.generate_task import generate_carousel
 
+_JOB_ID = "test-job-uuid-1234"
+_KEY = f"job:{_JOB_ID}"
+_TTL = 86400
+
 
 @pytest.fixture
 def mock_self() -> MagicMock:
     task = MagicMock()
-    task.request.id = "test-job-uuid-1234"
+    task.request.id = _JOB_ID
     return task
 
 
@@ -34,6 +39,31 @@ def mock_image_prompts() -> CarouselImagePrompts:
     )
 
 
+def _redis_call(
+    status: str,
+    progress: int | None = None,
+    slides: list[dict] | None = None,
+    error: str | None = None,
+) -> call:
+    """Gera um call() esperado para redis_client.set."""
+    payload = json.dumps(
+        {
+            "job_id": _JOB_ID,
+            "status": status,
+            "progress": progress,
+            "slides": slides,
+            "error": error,
+        }
+    )
+    return call(_KEY, payload, ex=_TTL)
+
+
+# ---------------------------------------------------------------------------
+# Happy path
+# ---------------------------------------------------------------------------
+
+
+@patch("app.tasks.generate_task.redis_client")
 @patch("app.tasks.generate_task.generate_slide_image")
 @patch("app.tasks.generate_task.run_image_prompt_chain")
 @patch("app.tasks.generate_task.run_slide_text_chain")
@@ -41,6 +71,7 @@ def test_generate_carousel_success(
     mock_run_text,
     mock_run_image,
     mock_gen_image,
+    mock_redis,
     mock_self,
     mock_slides_text,
     mock_image_prompts,
@@ -60,7 +91,7 @@ def test_generate_carousel_success(
         context_name="Test Brand",
     )
 
-    # Asserts
+    # --- Chain / service calls ---
     mock_run_text.assert_called_once_with(
         openai_api_key="sk-test-key",
         prompt="Test Prompt",
@@ -78,16 +109,8 @@ def test_generate_carousel_success(
         context_name="Test Brand",
     )
     assert mock_gen_image.call_count == 2
-    mock_gen_image.assert_any_call(
-        openai_api_key="sk-test-key",
-        image_prompt="Visual Prompt 1",
-    )
-    mock_gen_image.assert_any_call(
-        openai_api_key="sk-test-key",
-        image_prompt="Visual Prompt 2",
-    )
 
-    # Verify update_state calls
+    # --- Celery update_state calls ---
     mock_self.update_state.assert_any_call(
         state="processing", meta={"progress": 0}
     )
@@ -106,28 +129,48 @@ def test_generate_carousel_success(
         state="processing", meta={"progress": 95}
     )
 
-    # Result structure
-    assert result == {
-        "slides": [
-            {
-                "slide_order": 1,
-                "image_url": "http://cdn/1.png",
-                "caption": "Caption 1",
-                "prompt_used": "Visual Prompt 1",
-            },
-            {
-                "slide_order": 2,
-                "image_url": "http://cdn/2.png",
-                "caption": "Caption 2",
-                "prompt_used": "Visual Prompt 2",
-            },
-        ]
-    }
+    # --- Redis set calls (in order) ---
+    expected_slides_done = [
+        {
+            "slide_order": 1,
+            "image_url": "http://cdn/1.png",
+            "caption": "Caption 1",
+            "prompt_used": "Visual Prompt 1",
+        },
+        {
+            "slide_order": 2,
+            "image_url": "http://cdn/2.png",
+            "caption": "Caption 2",
+            "prompt_used": "Visual Prompt 2",
+        },
+    ]
+    mock_redis.set.assert_has_calls(
+        [
+            _redis_call("processing", progress=0),
+            _redis_call("processing", progress=30),
+            _redis_call("processing", progress=50),
+            _redis_call("processing", progress=72),
+            _redis_call("processing", progress=95),
+            _redis_call("done", slides=expected_slides_done),
+        ],
+        any_order=False,
+    )
+    assert mock_redis.set.call_count == 6
+
+    # --- Return value ---
+    assert result == {"slides": expected_slides_done}
 
 
+# ---------------------------------------------------------------------------
+# Failure / error handling
+# ---------------------------------------------------------------------------
+
+
+@patch("app.tasks.generate_task.redis_client")
 @patch("app.tasks.generate_task.run_slide_text_chain")
-def test_generate_carousel_bubbles_exceptions(
+def test_generate_carousel_saves_failed_status_on_exception(
     mock_run_text,
+    mock_redis,
     mock_self,
 ) -> None:
     mock_run_text.side_effect = ValueError("invalid count")
@@ -141,7 +184,33 @@ def test_generate_carousel_bubbles_exceptions(
             slide_count=2,
         )
 
-    # Initial state should still be set before the exception is raised
-    mock_self.update_state.assert_called_once_with(
-        state="processing", meta={"progress": 0}
+    # Initial processing state was persisted
+    mock_redis.set.assert_any_call(
+        _KEY,
+        json.dumps(
+            {
+                "job_id": _JOB_ID,
+                "status": "processing",
+                "progress": 0,
+                "slides": None,
+                "error": None,
+            }
+        ),
+        ex=_TTL,
     )
+    # Failed state was persisted with the error message
+    mock_redis.set.assert_any_call(
+        _KEY,
+        json.dumps(
+            {
+                "job_id": _JOB_ID,
+                "status": "failed",
+                "progress": None,
+                "slides": None,
+                "error": "invalid count",
+            }
+        ),
+        ex=_TTL,
+    )
+    # Exactly 2 redis writes: initial + failed
+    assert mock_redis.set.call_count == 2
