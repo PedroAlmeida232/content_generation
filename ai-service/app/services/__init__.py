@@ -5,6 +5,10 @@ from app.services.image_prompt_chain import (
     format_slides_for_image_prompt,
     run_image_prompt_chain,
 )
+from app.services.openai_client import (
+    OpenAIClientError,
+    generate_slide_image,
+)
 from app.services.prompt_builder import (
     CAROUSEL_PROMPT_TEMPLATE,
     build_carousel_prompt,
@@ -23,6 +27,7 @@ __all__ = [
     "IMAGE_PROMPT_TEMPLATE",
     "ImagePromptChain",
     "ImagePromptChainError",
+    "OpenAIClientError",
     "SLIDE_TEXT_PROMPT_TEMPLATE",
     "SlideTextChain",
     "SlideTextChainError",
@@ -30,6 +35,7 @@ __all__ = [
     "build_slide_text_messages",
     "format_color_palette",
     "format_slides_for_image_prompt",
+    "generate_slide_image",
     "run_image_prompt_chain",
     "run_slide_text_chain",
 ]
