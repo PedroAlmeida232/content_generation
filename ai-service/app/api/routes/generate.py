@@ -8,14 +8,17 @@ from app.schemas.carousel import (
     CarouselRequest,
     CarouselResponse,
     CarouselResultResponse,
+    PreviewRequest,
     SlideImageRequest,
     SlideImageResponse,
+    SlideResult,
 )
 from app.services.auth_client import (
     AuthClientError,
     ContextNotFoundError,
     fetch_brand_context,
 )
+from app.services.image_prompt_chain import run_image_prompt_chain
 from app.services.openai_client import (
     ContentFilterClientError,
     InvalidAPIKeyClientError,
@@ -23,6 +26,7 @@ from app.services.openai_client import (
     RateLimitClientError,
     generate_slide_image,
 )
+from app.services.slide_text_chain import run_slide_text_chain
 from app.tasks.generate_task import generate_carousel
 
 router = APIRouter(prefix="/generate", tags=["generation"])
@@ -155,7 +159,119 @@ async def generate_carousel_route(
 
 
 # ---------------------------------------------------------------------------
+# POST /generate/preview
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/preview",
+    response_model=SlideResult,
+    status_code=status.HTTP_200_OK,
+    summary="Gera 1 slide sincrono para preview",
+    description=(
+        "Valida JWT e X-OpenAI-Key, busca o contexto de marca no "
+        "auth-service, executa a geracao sincrona de 1 slide "
+        "(texto, prompt visual e imagem) e retorna o resultado "
+        "imediatamente."
+    ),
+)
+async def generate_preview_route(
+    request: PreviewRequest,
+    current_user: CurrentUser,
+    openai_key: OpenAIKey,
+    raw_token: RawToken,
+) -> SlideResult:
+    """Gera um slide sincrono de preview."""
+    # 1. Buscar contexto de marca no auth-service
+    try:
+        context = await fetch_brand_context(
+            context_id=request.context_id,
+            token=raw_token,
+        )
+    except ContextNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except AuthClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to reach auth-service: {exc}",
+        ) from exc
+
+    # 2. Executar a geracao de forma sincrona
+    try:
+        # A. Gerar textos para 1 slide
+        slides_text = run_slide_text_chain(
+            openai_api_key=openai_key,
+            prompt=request.prompt,
+            style=request.style,
+            slide_count=1,
+            tone=context.get("tone"),
+            color_palette=context.get("colorPalette"),
+            context_name=context.get("name"),
+        )
+        if not slides_text.slides:
+            raise ValueError("No slides text generated")
+
+        # B. Gerar prompt visual para o slide
+        image_prompts = run_image_prompt_chain(
+            openai_api_key=openai_key,
+            slides_text=slides_text,
+            style=request.style,
+            color_palette=context.get("colorPalette"),
+            context_name=context.get("name"),
+        )
+        if not image_prompts.slides:
+            raise ValueError("No visual prompts generated")
+
+        image_prompt_obj = image_prompts.slides[0]
+
+        # C. Gerar imagem via DALL-E 3
+        image_url = generate_slide_image(
+            openai_api_key=openai_key,
+            image_prompt=image_prompt_obj.image_prompt,
+        )
+
+        return SlideResult(
+            slide_order=1,
+            image_url=image_url,
+            caption=slides_text.slides[0].caption,
+            prompt_used=image_prompt_obj.image_prompt,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except RateLimitClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="OpenAI rate limit reached. Please try again later.",
+        ) from exc
+    except InvalidAPIKeyClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired OpenAI API key.",
+        ) from exc
+    except ContentFilterClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Image prompt was rejected by OpenAI content filter."
+            ),
+        ) from exc
+    except OpenAIClientError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to generate slide image via DALL-E 3",
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
 # GET /jobs/{job_id}  &  GET /jobs/{job_id}/result
+
 # ---------------------------------------------------------------------------
 
 

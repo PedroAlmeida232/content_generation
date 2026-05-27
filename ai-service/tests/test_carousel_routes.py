@@ -173,7 +173,179 @@ def test_generate_carousel_missing_openai_key(
 
 
 # ---------------------------------------------------------------------------
+# POST /generate/preview
+# ---------------------------------------------------------------------------
+
+
+@patch(f"{_CAROUSEL_PATH}.generate_slide_image")
+@patch(f"{_CAROUSEL_PATH}.run_image_prompt_chain")
+@patch(f"{_CAROUSEL_PATH}.run_slide_text_chain")
+@patch(
+    f"{_CAROUSEL_PATH}.fetch_brand_context",
+    new_callable=AsyncMock,
+)
+def test_generate_preview_success(
+    mock_fetch,
+    mock_text_chain,
+    mock_prompt_chain,
+    mock_generate_img,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_fetch.return_value = _CONTEXT_PAYLOAD
+
+    # Mock responses for slide text and image prompt chains
+    mock_text_slide = MagicMock()
+    mock_text_slide.slide_order = 1
+    mock_text_slide.title = "Preview Title"
+    mock_text_slide.caption = "Preview Caption"
+
+    mock_text_res = MagicMock()
+    mock_text_res.slides = [mock_text_slide]
+    mock_text_chain.return_value = mock_text_res
+
+    mock_prompt_slide = MagicMock()
+    mock_prompt_slide.slide_order = 1
+    mock_prompt_slide.image_prompt = "Preview Prompt"
+
+    mock_prompt_res = MagicMock()
+    mock_prompt_res.slides = [mock_prompt_slide]
+    mock_prompt_chain.return_value = mock_prompt_res
+
+    mock_generate_img.return_value = "https://cdn.example.com/preview.png"
+
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Post sobre Docker",
+            "style": "minimalista",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["slide_order"] == 1
+    assert body["image_url"] == "https://cdn.example.com/preview.png"
+    assert body["caption"] == "Preview Caption"
+    assert body["prompt_used"] == "Preview Prompt"
+
+    mock_fetch.assert_awaited_once()
+    mock_text_chain.assert_called_once()
+    mock_prompt_chain.assert_called_once()
+    mock_generate_img.assert_called_once()
+
+
+@patch(
+    f"{_CAROUSEL_PATH}.fetch_brand_context",
+    new_callable=AsyncMock,
+)
+def test_generate_preview_context_not_found(
+    mock_fetch,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    from app.services.auth_client import ContextNotFoundError
+    mock_fetch.side_effect = ContextNotFoundError("not found")
+
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Docker",
+            "style": "minimalista",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
+@patch(
+    f"{_CAROUSEL_PATH}.fetch_brand_context",
+    new_callable=AsyncMock,
+)
+def test_generate_preview_auth_service_error(
+    mock_fetch,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    from app.services.auth_client import AuthClientError
+    mock_fetch.side_effect = AuthClientError("service down")
+
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Docker",
+            "style": "minimalista",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 502
+
+
+def test_generate_preview_missing_jwt(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Docker",
+            "style": "minimalista",
+        },
+        headers={"X-OpenAI-Key": _VALID_KEY},
+    )
+    assert response.status_code == 401
+
+
+def test_generate_preview_missing_openai_key(
+    client: TestClient,
+    auth_headers_no_key: dict[str, str],
+) -> None:
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Docker",
+            "style": "minimalista",
+        },
+        headers=auth_headers_no_key,
+    )
+    assert response.status_code == 400
+
+
+@patch(f"{_CAROUSEL_PATH}.run_slide_text_chain")
+@patch(
+    f"{_CAROUSEL_PATH}.fetch_brand_context",
+    new_callable=AsyncMock,
+)
+def test_generate_preview_openai_rate_limit(
+    mock_fetch,
+    mock_text_chain,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    from app.services.openai_client import RateLimitClientError
+    mock_fetch.return_value = _CONTEXT_PAYLOAD
+    mock_text_chain.side_effect = RateLimitClientError("rate limit")
+
+    response = client.post(
+        "/generate/preview",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Docker",
+            "style": "minimalista",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 429
+
+
+# ---------------------------------------------------------------------------
 # GET /jobs/{job_id}
+
 # ---------------------------------------------------------------------------
 
 
