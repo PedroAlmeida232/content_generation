@@ -39,3 +39,21 @@ async def get_openai_api_key(
 
 CurrentUser = Annotated[TokenPayload, Depends(get_current_user)]
 OpenAIKey = Annotated[str, Depends(get_openai_api_key)]
+
+
+async def get_raw_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        bearer_scheme
+    ),
+) -> str:
+    """Extrai o token JWT cru do header Authorization."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return credentials.credentials
+
+
+RawToken = Annotated[str, Depends(get_raw_token)]

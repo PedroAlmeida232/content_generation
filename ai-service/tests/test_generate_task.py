@@ -11,6 +11,9 @@ _JOB_ID = "test-job-uuid-1234"
 _KEY = f"job:{_JOB_ID}"
 _TTL = 86400
 
+# O redis_client agora vive em app.core.redis — o patch deve apontar para lá.
+_REDIS_PATCH = "app.core.redis.redis_client"
+
 
 @pytest.fixture
 def mock_self() -> MagicMock:
@@ -63,7 +66,7 @@ def _redis_call(
 # ---------------------------------------------------------------------------
 
 
-@patch("app.tasks.generate_task.redis_client")
+@patch(_REDIS_PATCH)
 @patch("app.tasks.generate_task.generate_slide_image")
 @patch("app.tasks.generate_task.run_image_prompt_chain")
 @patch("app.tasks.generate_task.run_slide_text_chain")
@@ -166,7 +169,7 @@ def test_generate_carousel_success(
 # ---------------------------------------------------------------------------
 
 
-@patch("app.tasks.generate_task.redis_client")
+@patch(_REDIS_PATCH)
 @patch("app.tasks.generate_task.run_slide_text_chain")
 def test_generate_carousel_saves_failed_status_on_exception(
     mock_run_text,

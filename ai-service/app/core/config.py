@@ -8,6 +8,10 @@ class Settings:
     redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
     jwt_secret: str = os.getenv("JWT_SECRET", "")
     jwt_algorithm: str = "HS256"
+    auth_service_url: str = os.getenv(
+        "AUTH_SERVICE_URL",
+        "http://auth-service:8080",
+    )
 
 
 settings = Settings()
