@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Generation | Editor de Carrossel</title>
+    <meta
+      name="description"
+      content="Crie carrosseis do Instagram com geração assistida por IA. Informe o briefing, estilo visual e acompanhe a geração em tempo real."
+    />
+    <link rel="stylesheet" href="../css/design-tokens.css" />
+    <link rel="stylesheet" href="../css/editor.css" />
+  </head>
+  <body class="editor-body">
+    <div class="editor-shell">
+
+      <!-- ── Cabeçalho ───────────────────────────────────────────── -->
+      <header class="editor-header">
+        <a class="editor-brand" href="/" aria-label="Content Generation home">
+          <span class="editor-brand-mark">CG</span>
+          <span>Content Generation</span>
+        </a>
+        <a class="editor-back-link" href="/pages/dashboard.html">
+          ← Voltar ao dashboard
+        </a>
+      </header>
+
+      <!-- ── Conteúdo principal ──────────────────────────────────── -->
+      <main class="editor-main">
+
+        <div class="editor-intro">
+          <p class="editor-eyebrow">Editor de Carrossel</p>
+          <h1>Transforme seu briefing em carrossel pronto para publicar.</h1>
+          <p>
+            Preencha as informações abaixo, informe seu contexto de marca e
+            deixe a IA gerar textos, prompts visuais e imagens via DALL-E 3.
+          </p>
+        </div>
+
+        <!-- ── Card do Formulário ──────────────────────────────────── -->
+        <section class="editor-card" aria-label="Formulário de criação do carrossel">
+
+          <p
+            id="editor-form-feedback"
+            class="editor-form-feedback"
+            role="alert"
+            aria-live="polite"
+          ></p>
+
+          <form id="editor-form" class="editor-form" novalidate>
+
+            <div class="editor-fieldset">
+
+              <!-- Context ID -->
+              <div class="editor-field">
+                <label for="context-id">ID do Contexto de Marca</label>
+                <input
+                  id="context-id"
+                  name="context_id"
+                  type="text"
+                  placeholder="550e8400-e29b-41d4-a716-446655440000"
+                  required
+                  autocomplete="off"
+                  aria-describedby="context-id-hint"
+                />
+                <p id="context-id-hint" class="editor-field-hint">
+                  UUID do contexto de marca cadastrado na plataforma.
+                </p>
+              </div>
+
+              <!-- Estilo Visual -->
+              <div class="editor-field">
+                <label for="style">Estilo Visual</label>
+                <select id="style" name="style" required>
+                  <option value="" disabled selected>Selecione um estilo</option>
+                  <option value="minimalista">Minimalista</option>
+                  <option value="moderno">Moderno</option>
+                  <option value="corporativo">Corporativo</option>
+                  <option value="vibrante">Vibrante</option>
+                  <option value="editorial">Editorial</option>
+                </select>
+              </div>
+
+              <!-- Briefing / Prompt -->
+              <div class="editor-field editor-field--full">
+                <label for="prompt">Briefing / Prompt</label>
+                <textarea
+                  id="prompt"
+                  name="prompt"
+                  placeholder="Ex: Explique os 5 benefícios de usar Docker em produção, com linguagem técnica e direta."
+                  required
+                  minlength="10"
+                  maxlength="4000"
+                  aria-describedby="prompt-hint"
+                ></textarea>
+                <p id="prompt-hint" class="editor-field-hint">
+                  Descreva o tema, objetivo ou roteiro do carrossel. Máx. 4000 caracteres.
+                </p>
+              </div>
+
+              <!-- Quantidade de Slides -->
+              <div class="editor-field">
+                <label for="slide-count">Quantidade de Slides</label>
+                <input
+                  id="slide-count"
+                  name="slide_count"
+                  type="number"
+                  value="5"
+                  min="1"
+                  max="10"
+                  required
+                  aria-describedby="slide-count-hint"
+                />
+                <p id="slide-count-hint" class="editor-field-hint">
+                  De 1 a 10 slides por carrossel.
+                </p>
+              </div>
+
+            </div><!-- /.editor-fieldset -->
+
+            <div class="editor-actions">
+              <button
+                id="editor-submit"
+                class="editor-submit"
+                type="submit"
+              >
+                <span class="editor-submit-icon" aria-hidden="true">✦</span>
+                Gerar Carrossel com IA
+              </button>
+            </div>
+
+          </form>
+        </section><!-- /.editor-card -->
+
+      </main>
+    </div><!-- /.editor-shell -->
+
+    <!-- ── Modal de Progresso ──────────────────────────────────────── -->
+    <div
+      id="progress-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="progress-modal-title"
+      aria-describedby="progress-status-msg"
+    >
+      <div class="progress-modal">
+
+        <!-- Spinner de loading (visível durante processamento) -->
+        <div class="progress-spinner-wrap" id="progress-spinner" aria-hidden="true">
+          <div class="progress-spinner"></div>
+        </div>
+
+        <h2 id="progress-modal-title">Gerando seu carrossel…</h2>
+        <p class="progress-modal-subtitle">
+          Isso pode levar alguns minutos. Não feche esta janela.
+        </p>
+
+        <!-- Barra de progresso -->
+        <div class="progress-bar-outer" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar-region">
+          <div id="progress-bar-fill"></div>
+        </div>
+
+        <div class="progress-meta">
+          <span id="progress-percentage">0%</span>
+          <span id="progress-status-msg">Iniciando geração…</span>
+        </div>
+
+        <!-- Estado de sucesso -->
+        <div class="progress-success" id="progress-success" aria-live="polite">
+          <p class="progress-success-title">✓ Carrossel gerado com sucesso!</p>
+          <p>
+            Todos os slides foram gerados e estão disponíveis para visualização.
+          </p>
+          <div class="progress-result-actions">
+            <a
+              id="progress-view-link"
+              href="/pages/dashboard.html"
+              class="btn-primary"
+            >
+              Ver resultado
+            </a>
+            <a href="/pages/editor.html" class="btn-secondary">
+              Criar outro carrossel
+            </a>
+          </div>
+        </div>
+
+        <!-- Estado de erro -->
+        <div class="progress-error" id="progress-error" aria-live="assertive">
+          <p class="progress-error-title">Falha na geração</p>
+          <p id="progress-error-msg">Ocorreu um erro durante a geração. Tente novamente.</p>
+          <button class="progress-close-btn" id="progress-close-btn" type="button">
+            Fechar e tentar novamente
+          </button>
+        </div>
+
+      </div><!-- /.progress-modal -->
+    </div><!-- /#progress-overlay -->
+
+    <script type="module" src="../js/editor-page.js"></script>
+  </body>
+</html>
