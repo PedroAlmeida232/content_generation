@@ -135,3 +135,9 @@ class SlideImageResponse(BaseModel):
     """Resposta de POST /generate/slide-image."""
 
     image_url: HttpUrl
+
+
+class CarouselResultResponse(BaseModel):
+    """Resposta de GET /jobs/{job_id}/result quando status=done."""
+
+    slides: list[SlideResult]

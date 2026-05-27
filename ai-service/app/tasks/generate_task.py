@@ -1,8 +1,7 @@
-import json
 import logging
 from typing import Any
 
-from app.core.redis import redis_client
+from app.core.redis import save_redis_status
 from app.services.image_prompt_chain import run_image_prompt_chain
 from app.services.openai_client import generate_slide_image
 from app.services.slide_text_chain import run_slide_text_chain
@@ -10,32 +9,12 @@ from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-_JOB_TTL_SECONDS = 86400  # 24 horas
 
-
-def _save_redis_status(
-    job_id: str,
-    status: str,
-    progress: int | None = None,
-    slides: list[dict] | None = None,
-    error: str | None = None,
-) -> None:
-    """Salva o estado atual do job no Redis com TTL de 24 horas."""
-    payload = {
-        "job_id": job_id,
-        "status": status,
-        "progress": progress,
-        "slides": slides,
-        "error": error,
-    }
-    redis_client.set(
-        f"job:{job_id}",
-        json.dumps(payload),
-        ex=_JOB_TTL_SECONDS,
-    )
-
-
-@celery_app.task(bind=True, name="ai.generate_carousel", ignore_result=False)
+@celery_app.task(
+    bind=True,
+    name="ai.generate_carousel",
+    ignore_result=False,
+)
 def generate_carousel(
     self,
     *,
@@ -54,7 +33,7 @@ def generate_carousel(
     )
 
     try:
-        _save_redis_status(job_id, "processing", progress=0)
+        save_redis_status(job_id, "processing", progress=0)
         self.update_state(state="processing", meta={"progress": 0})
 
         # 1. Gerar os textos dos slides
@@ -67,7 +46,7 @@ def generate_carousel(
             color_palette=color_palette,
             context_name=context_name,
         )
-        _save_redis_status(job_id, "processing", progress=30)
+        save_redis_status(job_id, "processing", progress=30)
         self.update_state(state="processing", meta={"progress": 30})
 
         # 2. Gerar prompts visuais correspondentes
@@ -78,7 +57,7 @@ def generate_carousel(
             color_palette=color_palette,
             context_name=context_name,
         )
-        _save_redis_status(job_id, "processing", progress=50)
+        save_redis_status(job_id, "processing", progress=50)
         self.update_state(state="processing", meta={"progress": 50})
 
         # 3. Gerar imagens via DALL-E 3 para cada slide
@@ -107,12 +86,12 @@ def generate_carousel(
             )
 
             progress = 50 + int((i / slide_count) * 45)
-            _save_redis_status(job_id, "processing", progress=progress)
+            save_redis_status(job_id, "processing", progress=progress)
             self.update_state(
                 state="processing", meta={"progress": progress}
             )
 
-        _save_redis_status(job_id, "done", slides=slides_results)
+        save_redis_status(job_id, "done", slides=slides_results)
         logger.info(
             f"Carousel generation job={job_id} completed successfully"
         )
@@ -123,5 +102,5 @@ def generate_carousel(
         logger.error(
             f"Carousel generation job={job_id} failed: {error_msg}"
         )
-        _save_redis_status(job_id, "failed", error=error_msg)
+        save_redis_status(job_id, "failed", error=error_msg)
         raise

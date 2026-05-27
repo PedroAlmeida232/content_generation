@@ -1,6 +1,7 @@
 from app.schemas.carousel import (
     CarouselRequest,
     CarouselResponse,
+    CarouselResultResponse,
     JobStatus,
     SlideImageRequest,
     SlideImageResponse,
@@ -13,6 +14,7 @@ __all__ = [
     "CarouselImagePrompts",
     "CarouselRequest",
     "CarouselResponse",
+    "CarouselResultResponse",
     "CarouselSlidesText",
     "JobStatus",
     "SlideImagePrompt",
