@@ -3,16 +3,18 @@
  *
  * Fluxo:
  *  1. Valida sessão JWT e OpenAI Key no localStorage.
- *  2. Ao submeter o formulário, exibe o modal de progresso.
- *  3. Dispara POST /generate/carousel com openaiKey: true.
- *  4. Faz polling em GET /jobs/{job_id} a cada 1.5 segundos.
- *  5. Atualiza a barra de progresso e o texto de status dinamicamente.
- *  6. Em caso de sucesso, exibe o resultado. Em caso de falha, exibe erro.
+ *  2. Inicializa o CarouselEditor (carrega estilos via API).
+ *  3. Ao submeter o formulário, delega validação ao CarouselEditor.
+ *  4. Exibe o modal de progresso e dispara POST /generate/carousel.
+ *  5. Faz polling em GET /jobs/{job_id} a cada 1.5 segundos.
+ *  6. Atualiza a barra de progresso e o texto de status dinamicamente.
+ *  7. Em caso de sucesso, exibe o resultado. Em erro, exibe feedback.
  */
 
 import { requireAuthenticatedSession } from "./auth-session.js";
 import { aiApi, ApiError } from "./apiClient.js";
 import { getApiKey } from "./storage.js";
+import { CarouselEditor } from "./carouselEditor.js";
 
 // ── Intervalo de polling (ms) ─────────────────────────────────────
 const POLL_INTERVAL_MS = 1500;
@@ -42,6 +44,9 @@ const errorMsg = document.getElementById("progress-error-msg");
 const closeBtn = document.getElementById("progress-close-btn");
 const viewLink = document.getElementById("progress-view-link");
 const spinnerWrap = document.getElementById("progress-spinner");
+
+// ── Instância do CarouselEditor ────────────────────────────────────
+const editor = new CarouselEditor(form);
 
 // ── Estado interno do polling ─────────────────────────────────────
 let pollingTimer = null;
@@ -105,7 +110,9 @@ function showSuccess(jobId) {
 
 function showError(message) {
   spinnerWrap.setAttribute("hidden", "");
-  errorMsg.textContent = message || "Ocorreu um erro durante a geração. Tente novamente.";
+  errorMsg.textContent =
+    message ||
+    "Ocorreu um erro durante a geração. Tente novamente.";
   errorBlock.classList.add("is-visible");
 }
 
@@ -120,7 +127,8 @@ function stopPolling() {
 }
 
 async function pollJobStatus(jobId) {
-  // Evita requisições concorrentes se o intervalo disparar antes da anterior terminar
+  // Evita requisições concorrentes se o intervalo disparar antes
+  // da anterior terminar
   if (isPolling) {
     return;
   }
@@ -130,7 +138,8 @@ async function pollJobStatus(jobId) {
   try {
     const data = await aiApi.get(`/jobs/${jobId}`);
     const status = data?.status;
-    const progress = typeof data?.progress === "number" ? data.progress : null;
+    const progress =
+      typeof data?.progress === "number" ? data.progress : null;
 
     if (status === "done") {
       stopPolling();
@@ -154,7 +163,11 @@ async function pollJobStatus(jobId) {
       progressMsg.textContent = getStatusMessage(progress);
     }
   } catch (err) {
-    if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+    if (
+      err instanceof ApiError &&
+      err.status >= 400 &&
+      err.status < 500
+    ) {
       // Erro definitivo (ex: 404 job não encontrado)
       stopPolling();
       showError(`Erro ao consultar status: ${err.message}`);
@@ -181,33 +194,20 @@ async function handleFormSubmit(event) {
   const apiKey = getApiKey();
   if (!apiKey) {
     showFormError(
-      "Chave da OpenAI não configurada. Salve sua chave de API antes de gerar."
+      "Chave da OpenAI não configurada." +
+        " Salve sua chave de API antes de gerar."
     );
     return;
   }
 
-  // 2. Coletar e validar dados do formulário
-  const contextId = form.elements["context_id"].value.trim();
-  const prompt = form.elements["prompt"].value.trim();
-  const style = form.elements["style"].value;
-  const slideCount = parseInt(form.elements["slide_count"].value, 10);
+  // 2. Delegar validação ao CarouselEditor
+  const { isValid, values, message } = editor.validate();
+  if (!isValid) {
+    showFormError(message);
+    return;
+  }
 
-  if (!contextId) {
-    showFormError("Informe o ID do contexto de marca.");
-    return;
-  }
-  if (!prompt || prompt.length < 10) {
-    showFormError("O briefing deve ter ao menos 10 caracteres.");
-    return;
-  }
-  if (!style) {
-    showFormError("Selecione um estilo visual.");
-    return;
-  }
-  if (isNaN(slideCount) || slideCount < 1 || slideCount > 10) {
-    showFormError("A quantidade de slides deve ser entre 1 e 10.");
-    return;
-  }
+  const { contextId, prompt, style, aspectRatio, slideCount } = values;
 
   // 3. Mostrar modal e desabilitar botão
   resetModal();
@@ -222,6 +222,7 @@ async function handleFormSubmit(event) {
         context_id: contextId,
         prompt,
         style,
+        aspect_ratio: aspectRatio,
         slide_count: slideCount,
       },
       { openaiKey: true }
@@ -246,7 +247,9 @@ async function handleFormSubmit(event) {
       } else if (err.status === 400) {
         message = `Dados inválidos: ${err.message}`;
       } else if (err.status === 502) {
-        message = "Não foi possível conectar ao auth-service. Tente mais tarde.";
+        message =
+          "Não foi possível conectar ao auth-service." +
+          " Tente mais tarde.";
       } else {
         message = `Erro ${err.status}: ${err.message}`;
       }
@@ -271,6 +274,11 @@ function handleCloseBtn() {
 const session = requireAuthenticatedSession("/pages/editor.html");
 
 if (session) {
+  // Inicializar editor (carrega estilos dinamicamente)
+  editor.init().catch((err) => {
+    console.error("[editor-page] Falha ao inicializar editor:", err);
+  });
+
   form.addEventListener("submit", handleFormSubmit);
   closeBtn.addEventListener("click", handleCloseBtn);
 }

@@ -148,6 +148,7 @@ async def generate_carousel_route(
             "prompt": request.prompt,
             "style": request.style,
             "slide_count": request.slide_count,
+            "aspect_ratio": request.aspect_ratio,
             "tone": context.get("tone"),
             "color_palette": context.get("colorPalette"),
             "context_name": context.get("name"),

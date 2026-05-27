@@ -79,6 +79,7 @@ def test_generate_carousel_success(
             "context_id": _CONTEXT_ID,
             "prompt": "Post sobre lancamento",
             "style": "minimalista",
+            "aspect_ratio": "4:5",
         },
         headers=auth_headers,
     )
@@ -90,6 +91,12 @@ def test_generate_carousel_success(
     mock_fetch.assert_awaited_once()
     mock_save.assert_called_once()
     mock_task.apply_async.assert_called_once()
+    # Verificar que aspect_ratio foi repassado para a task
+    call_kwargs = mock_task.apply_async.call_args
+    task_kwargs = call_kwargs.kwargs.get(
+        "kwargs", call_kwargs[1].get("kwargs", {})
+    )
+    assert task_kwargs.get("aspect_ratio") == "4:5"
 
 
 @patch(
@@ -172,6 +179,23 @@ def test_generate_carousel_missing_openai_key(
     assert response.status_code == 400
 
 
+def test_generate_carousel_invalid_aspect_ratio(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = client.post(
+        "/generate/carousel",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Post",
+            "style": "minimalista",
+            "aspect_ratio": "16:9",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # POST /generate/preview
 # ---------------------------------------------------------------------------
@@ -220,6 +244,7 @@ def test_generate_preview_success(
             "context_id": _CONTEXT_ID,
             "prompt": "Post sobre Docker",
             "style": "minimalista",
+            "aspect_ratio": "9:16",
         },
         headers=auth_headers,
     )

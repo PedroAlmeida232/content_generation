@@ -68,17 +68,26 @@
                 </p>
               </div>
 
-              <!-- Estilo Visual -->
+              <!-- Estilo Visual (carregado dinamicamente via JS) -->
               <div class="editor-field">
                 <label for="style">Estilo Visual</label>
                 <select id="style" name="style" required>
-                  <option value="" disabled selected>Selecione um estilo</option>
-                  <option value="minimalista">Minimalista</option>
-                  <option value="moderno">Moderno</option>
-                  <option value="corporativo">Corporativo</option>
-                  <option value="vibrante">Vibrante</option>
-                  <option value="editorial">Editorial</option>
+                  <option value="" disabled selected>Carregando estilos…</option>
                 </select>
+              </div>
+
+              <!-- Formato / Aspect Ratio -->
+              <div class="editor-field">
+                <label for="format">Formato da Imagem</label>
+                <select id="format" name="format" required aria-describedby="format-hint">
+                  <option value="" disabled selected>Selecione um formato</option>
+                  <option value="1:1">1:1 — Quadrado (Instagram Feed)</option>
+                  <option value="4:5">4:5 — Retrato / Feed Instagram</option>
+                  <option value="9:16">9:16 — Stories / Reels</option>
+                </select>
+                <p id="format-hint" class="editor-field-hint">
+                  Proporção das imagens geradas para cada slide.
+                </p>
               </div>
 
               <!-- Briefing / Prompt -->

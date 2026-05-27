@@ -22,6 +22,7 @@ def generate_carousel(
     prompt: str,
     style: str,
     slide_count: int,
+    aspect_ratio: str = "1:1",
     tone: str | None = None,
     color_palette: list[str] | None = None,
     context_name: str | None = None,
@@ -29,6 +30,7 @@ def generate_carousel(
     job_id = self.request.id
     logger.info(
         f"Starting carousel generation job={job_id} "
+        f"aspect_ratio={aspect_ratio} "
         f"for prompt={prompt[:30]}..."
     )
 
