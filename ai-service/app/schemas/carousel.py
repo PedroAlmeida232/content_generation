@@ -164,3 +164,9 @@ class PreviewRequest(BaseModel):
             allowed = ", ".join(VISUAL_STYLES)
             raise ValueError(f"style must be one of: {allowed}")
         return value
+
+
+class PromptBuildResponse(BaseModel):
+    """Resposta de POST /prompts/build com o prompt final montado."""
+
+    prompt: str
