@@ -141,3 +141,26 @@ class CarouselResultResponse(BaseModel):
     """Resposta de GET /jobs/{job_id}/result quando status=done."""
 
     slides: list[SlideResult]
+
+
+class PreviewRequest(BaseModel):
+    """Payload para POST /generate/preview."""
+
+    context_id: UUID
+    prompt: str = Field(min_length=1, max_length=4000)
+    style: str = Field(min_length=1, max_length=100)
+
+    @field_validator("prompt", "style", mode="before")
+    @classmethod
+    def strip_strings(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("style")
+    @classmethod
+    def style_must_be_allowed(cls, value: str) -> str:
+        if value not in VISUAL_STYLES:
+            allowed = ", ".join(VISUAL_STYLES)
+            raise ValueError(f"style must be one of: {allowed}")
+        return value
