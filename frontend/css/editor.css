@@ -1,0 +1,580 @@
+/* ===================================================================
+   editor.css — Página de criação do carrossel (S2-019)
+   =================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+/* ── Layout base ─────────────────────────────────────────────────── */
+
+body.editor-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-200);
+  color: var(--color-ink);
+  background:
+    radial-gradient(circle at top left, rgba(45, 106, 106, 0.2), transparent 26%),
+    radial-gradient(circle at 85% 15%, rgba(194, 109, 58, 0.18), transparent 24%),
+    linear-gradient(180deg, #fbf7ef 0%, #f1e7da 100%);
+}
+
+.editor-shell {
+  width: min(100% - 3rem, var(--content-max-width));
+  margin: 0 auto;
+  padding: var(--space-300) 0 var(--space-600);
+}
+
+/* ── Cabeçalho ────────────────────────────────────────────────────── */
+
+.editor-header {
+  position: sticky;
+  top: var(--space-150);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-200);
+  padding: var(--space-200) var(--space-300);
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 253, 248, 0.84);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-card);
+}
+
+.editor-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+  color: var(--color-ink-strong);
+  text-decoration: none;
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-brand-mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--color-surface);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  box-shadow: var(--shadow-card);
+}
+
+.editor-back-link {
+  margin-left: auto;
+  color: var(--color-primary-strong);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-100);
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  transition: background 0.2s;
+}
+
+.editor-back-link:hover {
+  background: rgba(20, 33, 61, 0.06);
+}
+
+/* ── Main Layout ─────────────────────────────────────────────────── */
+
+.editor-main {
+  padding-top: var(--space-400);
+  display: grid;
+  gap: var(--space-400);
+}
+
+.editor-intro {
+  max-width: 44rem;
+}
+
+.editor-eyebrow {
+  margin: 0 0 var(--space-100);
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.editor-intro h1 {
+  margin: 0 0 var(--space-150);
+  font-family: var(--font-family-heading);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--color-ink-strong);
+}
+
+.editor-intro p {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+
+/* ── Card do Formulário ────────────────────────────────────────────── */
+
+.editor-card {
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  border-radius: clamp(1.25rem, 2vw, 2rem);
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: var(--shadow-card);
+  padding: clamp(1.75rem, 3vw, 3rem);
+}
+
+/* ── Formulário ─────────────────────────────────────────────────── */
+
+.editor-form {
+  display: grid;
+  gap: var(--space-300);
+}
+
+.editor-fieldset {
+  display: grid;
+  gap: var(--space-250, 1.25rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-field {
+  display: grid;
+  gap: var(--space-100);
+}
+
+.editor-field.editor-field--full {
+  grid-column: 1 / -1;
+}
+
+.editor-field label {
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink-strong);
+  letter-spacing: 0.04em;
+}
+
+.editor-field .editor-field-hint {
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  opacity: 0.7;
+  margin: 0;
+}
+
+.editor-field input,
+.editor-field select,
+.editor-field textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid rgba(20, 33, 61, 0.15);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink-strong);
+  font: inherit;
+  font-size: var(--font-size-200);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.editor-field input:focus,
+.editor-field select:focus,
+.editor-field textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(45, 106, 106, 0.14);
+}
+
+.editor-field textarea {
+  resize: vertical;
+  min-height: 8rem;
+  line-height: 1.65;
+}
+
+.editor-field input[type="number"] {
+  max-width: 12rem;
+}
+
+/* ── Ações do Formulário ─────────────────────────────────────────── */
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-200);
+  flex-wrap: wrap;
+}
+
+.editor-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-100);
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-200);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+  box-shadow: 0 6px 24px rgba(194, 109, 58, 0.3);
+}
+
+.editor-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(194, 109, 58, 0.4);
+}
+
+.editor-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.editor-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.editor-submit-icon {
+  font-size: 1.1rem;
+}
+
+.editor-form-feedback {
+  display: none;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+}
+
+.editor-form-feedback.is-error {
+  display: block;
+  background: rgba(181, 68, 68, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(181, 68, 68, 0.2);
+}
+
+/* ── Modal de Progresso ─────────────────────────────────────────── */
+
+#progress-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(20, 33, 61, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  align-items: center;
+  justify-content: center;
+  animation: overlay-in 0.25s ease;
+}
+
+#progress-overlay.is-visible {
+  display: flex;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.progress-modal {
+  width: min(90%, 480px);
+  padding: clamp(2rem, 4vw, 3rem);
+  border-radius: clamp(1.25rem, 2vw, 2rem);
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow:
+    0 32px 80px rgba(20, 33, 61, 0.24),
+    0 0 0 1px rgba(20, 33, 61, 0.07);
+  text-align: center;
+  animation: modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Spinner de carregamento ─────────────────────────────────────── */
+
+.progress-spinner-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-300);
+}
+
+.progress-spinner {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: 4px solid rgba(45, 106, 106, 0.15);
+  border-top-color: var(--color-accent);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progress-modal h2 {
+  margin: 0 0 var(--space-100);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-400);
+  color: var(--color-ink-strong);
+}
+
+.progress-modal-subtitle {
+  margin: 0 0 var(--space-300);
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  opacity: 0.8;
+}
+
+/* ── Barra de Progresso ──────────────────────────────────────────── */
+
+.progress-bar-outer {
+  width: 100%;
+  height: 0.75rem;
+  background: rgba(20, 33, 61, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: var(--space-200);
+}
+
+#progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-accent),
+    var(--color-primary)
+  );
+  background-size: 200% 100%;
+  animation: progress-shimmer 2s linear infinite;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 999px;
+}
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-200);
+  gap: var(--space-100);
+}
+
+#progress-percentage {
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-300);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-ink-strong);
+}
+
+#progress-status-msg {
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  opacity: 0.8;
+  text-align: right;
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* ── Estado de Sucesso ─────────────────────────────────────────── */
+
+.progress-success {
+  display: none;
+  margin-top: var(--space-300);
+  padding: var(--space-250, 1.25rem);
+  border-radius: var(--radius-md);
+  background: rgba(47, 133, 90, 0.08);
+  border: 1px solid rgba(47, 133, 90, 0.2);
+}
+
+.progress-success.is-visible {
+  display: block;
+}
+
+.progress-success-title {
+  margin: 0 0 var(--space-100);
+  font-family: var(--font-family-heading);
+  color: var(--color-success);
+  font-size: var(--font-size-300);
+}
+
+.progress-success p {
+  margin: 0 0 var(--space-150);
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  line-height: 1.6;
+}
+
+.progress-result-actions {
+  display: flex;
+  gap: var(--space-150);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.progress-result-actions a {
+  padding: 0.7rem 1.2rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-100);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.progress-result-actions a:hover {
+  transform: translateY(-1px);
+}
+
+.progress-result-actions .btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  color: var(--color-surface);
+  box-shadow: 0 4px 16px rgba(194, 109, 58, 0.25);
+}
+
+.progress-result-actions .btn-secondary {
+  border: 1px solid rgba(20, 33, 61, 0.15);
+  color: var(--color-ink-strong);
+  background: rgba(255, 253, 248, 0.8);
+}
+
+/* ── Estado de Erro no Modal ─────────────────────────────────────── */
+
+.progress-error {
+  display: none;
+  margin-top: var(--space-300);
+  padding: var(--space-200);
+  border-radius: var(--radius-md);
+  background: rgba(181, 68, 68, 0.08);
+  border: 1px solid rgba(181, 68, 68, 0.2);
+}
+
+.progress-error.is-visible {
+  display: block;
+}
+
+.progress-error-title {
+  margin: 0 0 var(--space-100);
+  font-family: var(--font-family-heading);
+  color: var(--color-danger);
+  font-size: var(--font-size-300);
+}
+
+#progress-error-msg {
+  margin: 0 0 var(--space-150);
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  line-height: 1.6;
+}
+
+.progress-close-btn {
+  display: inline-flex;
+  padding: 0.7rem 1.4rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(20, 33, 61, 0.08);
+  color: var(--color-ink-strong);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-100);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.progress-close-btn:hover {
+  background: rgba(20, 33, 61, 0.14);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .editor-fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-field.editor-field--full {
+    grid-column: 1;
+  }
+
+  .editor-field input[type="number"] {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .editor-shell {
+    width: min(100% - 1.5rem, var(--content-max-width));
+  }
+
+  .editor-header {
+    padding: var(--space-200);
+    top: var(--space-100);
+  }
+
+  .editor-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editor-submit {
+    justify-content: center;
+  }
+}
+
+/* ── Container e Botão para API Key (S2-017) ─────────────────────── */
+
+.api-key-input-container {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.api-key-input-container input {
+  padding-right: 4.5rem;
+}
+
+.api-key-toggle-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s;
+}
+
+.api-key-toggle-btn:hover {
+  background-color: rgba(45, 106, 106, 0.08);
+}
+

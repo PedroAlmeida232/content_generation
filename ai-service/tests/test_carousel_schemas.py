@@ -76,6 +76,32 @@ def test_rejects_invalid_slide_count(slide_count: int) -> None:
         )
 
 
+def test_carousel_request_default_aspect_ratio() -> None:
+    request = CarouselRequest.model_validate(
+        valid_carousel_request_dict()
+    )
+    assert request.aspect_ratio == "1:1"
+
+
+@pytest.mark.parametrize("ratio", ["1:1", "4:5", "9:16"])
+def test_carousel_request_valid_aspect_ratios(ratio: str) -> None:
+    request = CarouselRequest.model_validate(
+        valid_carousel_request_dict(aspect_ratio=ratio)
+    )
+    assert request.aspect_ratio == ratio
+
+
+@pytest.mark.parametrize("ratio", ["16:9", "1:2", "square", ""])
+def test_carousel_request_rejects_invalid_aspect_ratio(
+    ratio: str,
+) -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        CarouselRequest.model_validate(
+            valid_carousel_request_dict(aspect_ratio=ratio)
+        )
+    assert "aspect_ratio must be one of" in str(exc_info.value)
+
+
 def test_slide_result_rejects_invalid_url() -> None:
     with pytest.raises(ValidationError):
         SlideResult.model_validate(

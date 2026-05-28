@@ -12,6 +12,10 @@ from pydantic import (
 
 from app.api.routes.styles import VISUAL_STYLES
 
+# Valores válidos de proporção de imagem para o Instagram.
+# Devem estar em sincronia com INSTAGRAM_FORMATS em image_processor.py.
+VALID_ASPECT_RATIOS = ("1:1", "4:5", "9:16")
+
 MIN_SLIDES = 1
 MAX_SLIDES = 10
 DEFAULT_SLIDE_COUNT = 5
@@ -35,6 +39,7 @@ class CarouselRequest(BaseModel):
     context_id: UUID
     prompt: str = Field(min_length=1, max_length=4000)
     style: str = Field(min_length=1, max_length=100)
+    aspect_ratio: str = Field(default="1:1")
     slide_count: int = Field(
         default=DEFAULT_SLIDE_COUNT,
         ge=MIN_SLIDES,
@@ -56,6 +61,18 @@ class CarouselRequest(BaseModel):
             raise ValueError(f"style must be one of: {allowed}")
         return value
 
+    @field_validator("aspect_ratio")
+    @classmethod
+    def aspect_ratio_must_be_allowed(
+        cls, value: str
+    ) -> str:
+        if value not in VALID_ASPECT_RATIOS:
+            allowed = ", ".join(VALID_ASPECT_RATIOS)
+            raise ValueError(
+                f"aspect_ratio must be one of: {allowed}"
+            )
+        return value
+
 
 class CarouselResponse(BaseModel):
     job_id: str = Field(min_length=1)
@@ -68,19 +85,29 @@ class CarouselResponse(BaseModel):
     def validate_status_fields(self) -> "CarouselResponse":
         if self.status == JobStatus.DONE:
             if not self.slides:
-                raise ValueError("slides is required when status is done")
+                raise ValueError(
+                    "slides is required when status is done"
+                )
             if self.error is not None:
-                raise ValueError("error must be None when status is done")
+                raise ValueError(
+                    "error must be None when status is done"
+                )
         elif self.status == JobStatus.FAILED:
             if self.slides is not None:
-                raise ValueError("slides must be None when status is failed")
+                raise ValueError(
+                    "slides must be None when status is failed"
+                )
         else:
             if self.slides is not None:
                 raise ValueError(
-                    "slides must be None when status is pending or processing"
+                    "slides must be None when status is "
+                    "pending or processing"
                 )
 
-        if self.progress is not None and self.status != JobStatus.PROCESSING:
+        if (
+            self.progress is not None
+            and self.status != JobStatus.PROCESSING
+        ):
             raise ValueError(
                 "progress is only allowed when status is processing"
             )
@@ -105,7 +132,7 @@ class CarouselResponse(BaseModel):
                     "slides": [
                         {
                             "slide_order": 1,
-                            "image_url": "https://cdn.example/slide1.png",
+                            "image_url": "https://cdn.example/s1.png",
                             "caption": "Primeiro slide",
                         }
                     ],
@@ -149,6 +176,7 @@ class PreviewRequest(BaseModel):
     context_id: UUID
     prompt: str = Field(min_length=1, max_length=4000)
     style: str = Field(min_length=1, max_length=100)
+    aspect_ratio: str = Field(default="1:1")
 
     @field_validator("prompt", "style", mode="before")
     @classmethod
@@ -163,6 +191,18 @@ class PreviewRequest(BaseModel):
         if value not in VISUAL_STYLES:
             allowed = ", ".join(VISUAL_STYLES)
             raise ValueError(f"style must be one of: {allowed}")
+        return value
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def aspect_ratio_must_be_allowed(
+        cls, value: str
+    ) -> str:
+        if value not in VALID_ASPECT_RATIOS:
+            allowed = ", ".join(VALID_ASPECT_RATIOS)
+            raise ValueError(
+                f"aspect_ratio must be one of: {allowed}"
+            )
         return value
 
 
