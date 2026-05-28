@@ -54,8 +54,17 @@ const preview = new CarouselPreview("editor-preview");
 let pollingTimer = null;
 let isPolling = false;
 let currentSlides = [];
+let currentAspectRatio = "1:1";
+const originalSubmitHtml = submitBtn.innerHTML;
 
 // ── Helpers ───────────────────────────────────────────────────────
+
+function setFormControlsDisabled(disabled) {
+  const controls = form.querySelectorAll("input, select, textarea, button");
+  controls.forEach((control) => {
+    control.disabled = disabled;
+  });
+}
 
 function getStatusMessage(progress) {
   for (const entry of STATUS_MESSAGES) {
@@ -206,10 +215,20 @@ async function handleFormSubmit(event) {
   // 2. Persistir a OpenAI API Key validada no localStorage
   saveApiKey(openaiApiKey);
 
-  // 3. Mostrar modal e desabilitar botão
+  // Salvar a proporção para renderização do preview posterior
+  currentAspectRatio = aspectRatio;
+
+  // Ocultar preview anterior
+  const previewSection = document.getElementById("editor-preview");
+  if (previewSection) {
+    previewSection.setAttribute("hidden", "");
+  }
+
+  // 3. Mostrar modal e desabilitar formulário
   resetModal();
   showOverlay();
-  submitBtn.disabled = true;
+  setFormControlsDisabled(true);
+  submitBtn.innerHTML = `<span class="editor-submit-icon" aria-hidden="true">✦</span> Gerando carrossel...`;
 
   try {
     // 4. Disparar geração
@@ -235,7 +254,8 @@ async function handleFormSubmit(event) {
   } catch (err) {
     stopPolling();
     hideOverlay();
-    submitBtn.disabled = false;
+    setFormControlsDisabled(false);
+    submitBtn.innerHTML = originalSubmitHtml;
 
     let message = "Erro ao iniciar a geração. Tente novamente.";
     if (err instanceof ApiError) {
@@ -263,7 +283,8 @@ async function handleFormSubmit(event) {
 function handleCloseBtn() {
   stopPolling();
   hideOverlay();
-  submitBtn.disabled = false;
+  setFormControlsDisabled(false);
+  submitBtn.innerHTML = originalSubmitHtml;
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
@@ -283,8 +304,12 @@ if (session) {
     e.preventDefault();
     hideOverlay();
 
-    // Renderiza e exibe o preview dos slides
-    preview.render(currentSlides);
+    // Reabilitar formulário para novas criações
+    setFormControlsDisabled(false);
+    submitBtn.innerHTML = originalSubmitHtml;
+
+    // Renderiza e exibe o preview dos slides com a proporção selecionada
+    preview.render(currentSlides, currentAspectRatio);
     const previewSection = document.getElementById("editor-preview");
     if (previewSection) {
       previewSection.removeAttribute("hidden");

@@ -51,20 +51,14 @@
 
             <div class="editor-fieldset">
 
-              <!-- Context ID -->
+              <!-- Contexto de Marca -->
               <div class="editor-field">
-                <label for="context-id">ID do Contexto de Marca</label>
-                <input
-                  id="context-id"
-                  name="context_id"
-                  type="text"
-                  placeholder="550e8400-e29b-41d4-a716-446655440000"
-                  required
-                  autocomplete="off"
-                  aria-describedby="context-id-hint"
-                />
+                <label for="context-id">Contexto de Marca</label>
+                <select id="context-id" name="context_id" required aria-describedby="context-id-hint">
+                  <option value="" disabled selected>Carregando contextos…</option>
+                </select>
                 <p id="context-id-hint" class="editor-field-hint">
-                  UUID do contexto de marca cadastrado na plataforma.
+                  Selecione as diretrizes de marca que guiarão a geração.
                 </p>
               </div>
 
@@ -200,7 +194,17 @@
               <p id="slide-caption-text" class="slide-caption-text"></p>
             </div>
             <div class="detail-group">
-              <h3>Prompt Visual (DALL-E 3)</h3>
+              <div class="detail-header">
+                <h3>Prompt Visual (DALL-E 3)</h3>
+                <div class="detail-actions">
+                  <a id="open-image-btn" class="btn-open-link" href="#" target="_blank" rel="noopener">
+                    Abrir Imagem
+                  </a>
+                  <button id="copy-prompt-btn" class="btn-copy" type="button">
+                    Copiar Prompt
+                  </button>
+                </div>
+              </div>
               <p id="slide-prompt-text" class="slide-prompt-text"></p>
             </div>
           </div>

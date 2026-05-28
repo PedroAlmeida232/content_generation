@@ -829,4 +829,62 @@ body.editor-body {
   }
 }
 
+/* ── Melhorias de Proporção e Estados de Formulário (S2-021) ─────── */
+
+.carousel-track-wrapper.ratio-1-1 {
+  aspect-ratio: 1 / 1;
+}
+
+.carousel-track-wrapper.ratio-4-5 {
+  aspect-ratio: 4 / 5;
+}
+
+.carousel-track-wrapper.ratio-9-16 {
+  aspect-ratio: 9 / 16;
+}
+
+/* Reduzir o tamanho do contêiner para formatos verticais longos */
+.carousel-track-wrapper.ratio-9-16 img {
+  max-height: 80vh;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-open-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-open-link:hover {
+  background: rgba(20, 33, 61, 0.05);
+  border-color: var(--color-accent);
+}
+
+.editor-field input:disabled,
+.editor-field select:disabled,
+.editor-field textarea:disabled {
+  background-color: var(--color-surface-muted);
+  color: rgba(20, 33, 61, 0.4);
+  border-color: rgba(20, 33, 61, 0.08);
+  cursor: not-allowed;
+}
+
+.api-key-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 

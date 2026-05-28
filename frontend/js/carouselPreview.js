@@ -16,6 +16,7 @@ export class CarouselPreview {
   constructor(containerId) {
     this.container = document.getElementById(containerId);
     this.track = this.container.querySelector("#carousel-track");
+    this.wrapper = this.container.querySelector(".carousel-track-wrapper");
     this.prevBtn = this.container.querySelector("#carousel-prev-btn");
     this.nextBtn = this.container.querySelector("#carousel-next-btn");
     this.dotsContainer = this.container.querySelector("#carousel-dots");
@@ -23,6 +24,8 @@ export class CarouselPreview {
     this.promptText = this.container.querySelector("#slide-prompt-text");
     this.slideNumSpan = this.container.querySelector("#current-slide-num");
     this.copyCaptionBtn = this.container.querySelector("#copy-caption-btn");
+    this.copyPromptBtn = this.container.querySelector("#copy-prompt-btn");
+    this.openImageBtn = this.container.querySelector("#open-image-btn");
 
     this.slidesData = [];
     this.currentIndex = 0;
@@ -34,15 +37,25 @@ export class CarouselPreview {
     this.prevBtn?.addEventListener("click", () => this.prev());
     this.nextBtn?.addEventListener("click", () => this.next());
     this.copyCaptionBtn?.addEventListener("click", () => this.copyCaption());
+    this.copyPromptBtn?.addEventListener("click", () => this.copyPrompt());
   }
 
   /**
    * Monta os slides no DOM e inicializa a exibição.
    * @param {Array} slides - Array de objetos contendo url, legenda e prompt.
+   * @param {string} aspectRatio - Proporção selecionada (ex: "1:1", "4:5", "9:16").
    */
-  render(slides) {
+  render(slides, aspectRatio) {
     this.slidesData = slides || [];
     this.currentIndex = 0;
+
+    if (this.wrapper) {
+      this.wrapper.className = "carousel-track-wrapper";
+      if (aspectRatio) {
+        const formattedRatio = aspectRatio.replace(":", "-");
+        this.wrapper.classList.add(`ratio-${formattedRatio}`);
+      }
+    }
 
     // Limpar elementos antigos
     if (this.track) this.track.innerHTML = "";
@@ -143,6 +156,31 @@ export class CarouselPreview {
   }
 
   /**
+   * Copia o prompt visual do slide ativo para o clipboard.
+   */
+  copyPrompt() {
+    const activeSlide = this.slidesData[this.currentIndex];
+    if (!activeSlide || !activeSlide.prompt_used) return;
+
+    navigator.clipboard
+      .writeText(activeSlide.prompt_used)
+      .then(() => {
+        if (!this.copyPromptBtn) return;
+        const originalText = this.copyPromptBtn.textContent;
+        this.copyPromptBtn.textContent = "Copiado!";
+        this.copyPromptBtn.classList.add("copied");
+
+        setTimeout(() => {
+          this.copyPromptBtn.textContent = originalText;
+          this.copyPromptBtn.classList.remove("copied");
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("[CarouselPreview] Falha ao copiar prompt:", err);
+      });
+  }
+
+  /**
    * Atualiza as classes de atividade do DOM e a translação do track.
    */
   _updateActiveSlide() {
@@ -185,6 +223,9 @@ export class CarouselPreview {
       }
       if (this.promptText) {
         this.promptText.textContent = activeSlide.prompt_used || "";
+      }
+      if (this.openImageBtn) {
+        this.openImageBtn.href = activeSlide.image_url || "#";
       }
     }
   }
