@@ -8,7 +8,7 @@
  *  3. Validar os dados segundo as regras de negócio antes do envio.
  */
 
-import { aiApi, ApiError } from "./apiClient.js";
+import { aiApi, authApi, ApiError } from "./apiClient.js";
 import { getApiKey } from "./storage.js";
 
 // Regex para validação de UUID v4 no campo context_id.
@@ -33,14 +33,64 @@ export class CarouselEditor {
   }
 
   /**
-   * Inicializa o editor: carrega os estilos disponíveis do backend.
+   * Inicializa o editor: carrega os estilos e contextos disponíveis.
    * Deve ser chamado uma única vez ao montar a página.
    *
    * @returns {Promise<void>}
    */
   async init() {
-    await this._loadStyles();
+    await Promise.all([this._loadStyles(), this.loadContexts()]);
     this._initApiKeyField();
+  }
+
+  async loadContexts() {
+    try {
+      const contexts = await authApi.get("/contexts");
+
+      if (!Array.isArray(contexts) || contexts.length === 0) {
+        this._fallbackContexts();
+        return;
+      }
+
+      this._contextInput.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      placeholder.textContent = "Selecione um contexto de marca";
+      this._contextInput.appendChild(placeholder);
+
+      contexts.forEach((ctx) => {
+        const option = document.createElement("option");
+        option.value = ctx.id;
+        option.textContent = ctx.contextKey;
+        this._contextInput.appendChild(option);
+      });
+    } catch (err) {
+      console.warn(
+        "[CarouselEditor] Falha ao carregar contextos do auth-service:",
+        err
+      );
+      this._fallbackContexts();
+    }
+  }
+
+  _fallbackContexts() {
+    if (!this._contextInput) return;
+    this._contextInput.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = "Selecione um contexto de marca";
+    this._contextInput.appendChild(placeholder);
+
+    const option = document.createElement("option");
+    option.value = "550e8400-e29b-41d4-a716-446655440000";
+    option.textContent = "Contexto Padrão (Demonstração)";
+    this._contextInput.appendChild(option);
   }
 
   _initApiKeyField() {
@@ -188,7 +238,7 @@ export class CarouselEditor {
       return {
         isValid: false,
         values,
-        message: "Informe o ID do contexto de marca.",
+        message: "Selecione um contexto de marca.",
       };
     }
 

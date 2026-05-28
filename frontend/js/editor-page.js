@@ -15,6 +15,7 @@ import { requireAuthenticatedSession } from "./auth-session.js";
 import { aiApi, ApiError } from "./apiClient.js";
 import { getApiKey, saveApiKey } from "./storage.js";
 import { CarouselEditor } from "./carouselEditor.js";
+import { CarouselPreview } from "./carouselPreview.js";
 
 // ── Intervalo de polling (ms) ─────────────────────────────────────
 const POLL_INTERVAL_MS = 3000;
@@ -45,14 +46,25 @@ const closeBtn = document.getElementById("progress-close-btn");
 const viewLink = document.getElementById("progress-view-link");
 const spinnerWrap = document.getElementById("progress-spinner");
 
-// ── Instância do CarouselEditor ────────────────────────────────────
+// ── Instâncias dos Componentes ─────────────────────────────────────
 const editor = new CarouselEditor(form);
+const preview = new CarouselPreview("editor-preview");
 
 // ── Estado interno do polling ─────────────────────────────────────
 let pollingTimer = null;
 let isPolling = false;
+let currentSlides = [];
+let currentAspectRatio = "1:1";
+const originalSubmitHtml = submitBtn.innerHTML;
 
 // ── Helpers ───────────────────────────────────────────────────────
+
+function setFormControlsDisabled(disabled) {
+  const controls = form.querySelectorAll("input, select, textarea, button");
+  controls.forEach((control) => {
+    control.disabled = disabled;
+  });
+}
 
 function getStatusMessage(progress) {
   for (const entry of STATUS_MESSAGES) {
@@ -100,11 +112,11 @@ function resetModal() {
   spinnerWrap.removeAttribute("hidden");
 }
 
-function showSuccess(jobId) {
+function showSuccess(jobId, slides) {
   spinnerWrap.setAttribute("hidden", "");
   setProgress(100);
   progressMsg.textContent = "Carrossel gerado com sucesso!";
-  viewLink.href = `/pages/dashboard.html?job=${jobId}`;
+  currentSlides = slides || [];
   successBlock.classList.add("is-visible");
 }
 
@@ -143,7 +155,7 @@ async function pollJobStatus(jobId) {
 
     if (status === "done") {
       stopPolling();
-      showSuccess(jobId);
+      showSuccess(jobId, data?.slides);
       return;
     }
 
@@ -203,10 +215,20 @@ async function handleFormSubmit(event) {
   // 2. Persistir a OpenAI API Key validada no localStorage
   saveApiKey(openaiApiKey);
 
-  // 3. Mostrar modal e desabilitar botão
+  // Salvar a proporção para renderização do preview posterior
+  currentAspectRatio = aspectRatio;
+
+  // Ocultar preview anterior
+  const previewSection = document.getElementById("editor-preview");
+  if (previewSection) {
+    previewSection.setAttribute("hidden", "");
+  }
+
+  // 3. Mostrar modal e desabilitar formulário
   resetModal();
   showOverlay();
-  submitBtn.disabled = true;
+  setFormControlsDisabled(true);
+  submitBtn.innerHTML = `<span class="editor-submit-icon" aria-hidden="true">✦</span> Gerando carrossel...`;
 
   try {
     // 4. Disparar geração
@@ -232,7 +254,8 @@ async function handleFormSubmit(event) {
   } catch (err) {
     stopPolling();
     hideOverlay();
-    submitBtn.disabled = false;
+    setFormControlsDisabled(false);
+    submitBtn.innerHTML = originalSubmitHtml;
 
     let message = "Erro ao iniciar a geração. Tente novamente.";
     if (err instanceof ApiError) {
@@ -260,7 +283,8 @@ async function handleFormSubmit(event) {
 function handleCloseBtn() {
   stopPolling();
   hideOverlay();
-  submitBtn.disabled = false;
+  setFormControlsDisabled(false);
+  submitBtn.innerHTML = originalSubmitHtml;
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
@@ -275,4 +299,21 @@ if (session) {
 
   form.addEventListener("submit", handleFormSubmit);
   closeBtn.addEventListener("click", handleCloseBtn);
+
+  viewLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    hideOverlay();
+
+    // Reabilitar formulário para novas criações
+    setFormControlsDisabled(false);
+    submitBtn.innerHTML = originalSubmitHtml;
+
+    // Renderiza e exibe o preview dos slides com a proporção selecionada
+    preview.render(currentSlides, currentAspectRatio);
+    const previewSection = document.getElementById("editor-preview");
+    if (previewSection) {
+      previewSection.removeAttribute("hidden");
+      previewSection.scrollIntoView({ behavior: "smooth" });
+    }
+  });
 }
