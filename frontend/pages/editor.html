@@ -168,6 +168,44 @@
           </form>
         </section><!-- /.editor-card -->
 
+        <!-- ── Seção de Visualização (S2-020) ─────────────────────── -->
+        <section id="editor-preview" class="editor-preview" hidden>
+          <div class="preview-header">
+            <h2>Seu Carrossel está Pronto!</h2>
+            <p>Navegue pelos slides abaixo e revise o conteúdo gerado pela IA.</p>
+          </div>
+
+          <div class="carousel-container">
+            <div class="carousel-track-wrapper">
+              <div class="carousel-track" id="carousel-track"></div>
+            </div>
+
+            <!-- Controles de Navegação -->
+            <button class="carousel-btn btn-prev" id="carousel-prev-btn" type="button" aria-label="Slide anterior">‹</button>
+            <button class="carousel-btn btn-next" id="carousel-next-btn" type="button" aria-label="Próximo slide">›</button>
+
+            <!-- Indicadores (dots) -->
+            <div class="carousel-dots" id="carousel-dots"></div>
+          </div>
+
+          <!-- Metadados do Slide Ativo -->
+          <div class="slide-details" id="slide-details">
+            <div class="detail-group">
+              <div class="detail-header">
+                <h3>Legenda do Slide <span id="current-slide-num">1</span></h3>
+                <button id="copy-caption-btn" class="btn-copy" type="button">
+                  Copiar Legenda
+                </button>
+              </div>
+              <p id="slide-caption-text" class="slide-caption-text"></p>
+            </div>
+            <div class="detail-group">
+              <h3>Prompt Visual (DALL-E 3)</h3>
+              <p id="slide-prompt-text" class="slide-prompt-text"></p>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div><!-- /.editor-shell -->
 

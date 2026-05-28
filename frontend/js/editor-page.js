@@ -15,6 +15,7 @@ import { requireAuthenticatedSession } from "./auth-session.js";
 import { aiApi, ApiError } from "./apiClient.js";
 import { getApiKey, saveApiKey } from "./storage.js";
 import { CarouselEditor } from "./carouselEditor.js";
+import { CarouselPreview } from "./carouselPreview.js";
 
 // ── Intervalo de polling (ms) ─────────────────────────────────────
 const POLL_INTERVAL_MS = 3000;
@@ -45,12 +46,14 @@ const closeBtn = document.getElementById("progress-close-btn");
 const viewLink = document.getElementById("progress-view-link");
 const spinnerWrap = document.getElementById("progress-spinner");
 
-// ── Instância do CarouselEditor ────────────────────────────────────
+// ── Instâncias dos Componentes ─────────────────────────────────────
 const editor = new CarouselEditor(form);
+const preview = new CarouselPreview("editor-preview");
 
 // ── Estado interno do polling ─────────────────────────────────────
 let pollingTimer = null;
 let isPolling = false;
+let currentSlides = [];
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -100,11 +103,11 @@ function resetModal() {
   spinnerWrap.removeAttribute("hidden");
 }
 
-function showSuccess(jobId) {
+function showSuccess(jobId, slides) {
   spinnerWrap.setAttribute("hidden", "");
   setProgress(100);
   progressMsg.textContent = "Carrossel gerado com sucesso!";
-  viewLink.href = `/pages/dashboard.html?job=${jobId}`;
+  currentSlides = slides || [];
   successBlock.classList.add("is-visible");
 }
 
@@ -143,7 +146,7 @@ async function pollJobStatus(jobId) {
 
     if (status === "done") {
       stopPolling();
-      showSuccess(jobId);
+      showSuccess(jobId, data?.slides);
       return;
     }
 
@@ -275,4 +278,17 @@ if (session) {
 
   form.addEventListener("submit", handleFormSubmit);
   closeBtn.addEventListener("click", handleCloseBtn);
+
+  viewLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    hideOverlay();
+
+    // Renderiza e exibe o preview dos slides
+    preview.render(currentSlides);
+    const previewSection = document.getElementById("editor-preview");
+    if (previewSection) {
+      previewSection.removeAttribute("hidden");
+      previewSection.scrollIntoView({ behavior: "smooth" });
+    }
+  });
 }
