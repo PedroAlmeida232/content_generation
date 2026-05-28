@@ -125,6 +125,33 @@
                 </p>
               </div>
 
+              <!-- OpenAI API Key -->
+              <div class="editor-field">
+                <label for="openai-key">Chave API da OpenAI</label>
+                <div class="api-key-input-container">
+                  <input
+                    id="openai-key"
+                    name="openai_key"
+                    type="password"
+                    placeholder="sk-..."
+                    required
+                    autocomplete="off"
+                    aria-describedby="openai-key-hint"
+                  />
+                  <button
+                    id="openai-key-toggle"
+                    type="button"
+                    class="api-key-toggle-btn"
+                    aria-label="Mostrar chave"
+                  >
+                    Mostrar
+                  </button>
+                </div>
+                <p id="openai-key-hint" class="editor-field-hint">
+                  Chave utilizada para gerar conteúdo via GPT-4 e DALL-E 3.
+                </p>
+              </div>
+
             </div><!-- /.editor-fieldset -->
 
             <div class="editor-actions">

@@ -9,6 +9,7 @@
  */
 
 import { aiApi, ApiError } from "./apiClient.js";
+import { getApiKey } from "./storage.js";
 
 // Regex para validação de UUID v4 no campo context_id.
 const UUID_REGEX =
@@ -27,6 +28,8 @@ export class CarouselEditor {
     this._contextInput = form.querySelector("#context-id");
     this._promptTextarea = form.querySelector("#prompt");
     this._slideCountInput = form.querySelector("#slide-count");
+    this._apiKeyInput = form.querySelector("#openai-key");
+    this._apiKeyToggle = form.querySelector("#openai-key-toggle");
   }
 
   /**
@@ -37,6 +40,25 @@ export class CarouselEditor {
    */
   async init() {
     await this._loadStyles();
+    this._initApiKeyField();
+  }
+
+  _initApiKeyField() {
+    const key = getApiKey();
+    if (key && this._apiKeyInput) {
+      this._apiKeyInput.value = key;
+    }
+    if (this._apiKeyToggle && this._apiKeyInput) {
+      this._apiKeyToggle.addEventListener("click", () => {
+        const isPassword = this._apiKeyInput.type === "password";
+        this._apiKeyInput.type = isPassword ? "text" : "password";
+        this._apiKeyToggle.textContent = isPassword ? "Ocultar" : "Mostrar";
+        this._apiKeyToggle.setAttribute(
+          "aria-label",
+          isPassword ? "Ocultar chave" : "Mostrar chave"
+        );
+      });
+    }
   }
 
   // ── Privado: Carregamento de Estilos ──────────────────────────────
@@ -123,6 +145,7 @@ export class CarouselEditor {
         this._slideCountInput?.value ?? "0",
         10
       ),
+      openaiApiKey: (this._apiKeyInput?.value ?? "").trim(),
     };
   }
 
@@ -135,8 +158,31 @@ export class CarouselEditor {
    */
   validate() {
     const values = this.getValues();
-    const { contextId, prompt, style, aspectRatio, slideCount } =
-      values;
+    const {
+      contextId,
+      prompt,
+      style,
+      aspectRatio,
+      slideCount,
+      openaiApiKey,
+    } = values;
+
+    if (!openaiApiKey) {
+      return {
+        isValid: false,
+        values,
+        message: "Informe a Chave API da OpenAI.",
+      };
+    }
+
+    if (!openaiApiKey.startsWith("sk-") || openaiApiKey.length < 20) {
+      return {
+        isValid: false,
+        values,
+        message:
+          "A chave API da OpenAI deve começar com 'sk-' e ser válida.",
+      };
+    }
 
     if (!contextId) {
       return {

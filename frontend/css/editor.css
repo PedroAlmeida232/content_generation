@@ -545,3 +545,36 @@ body.editor-body {
     justify-content: center;
   }
 }
+
+/* ── Container e Botão para API Key (S2-017) ─────────────────────── */
+
+.api-key-input-container {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.api-key-input-container input {
+  padding-right: 4.5rem;
+}
+
+.api-key-toggle-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s;
+}
+
+.api-key-toggle-btn:hover {
+  background-color: rgba(45, 106, 106, 0.08);
+}
+

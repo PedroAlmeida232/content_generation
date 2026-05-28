@@ -13,11 +13,11 @@
 
 import { requireAuthenticatedSession } from "./auth-session.js";
 import { aiApi, ApiError } from "./apiClient.js";
-import { getApiKey } from "./storage.js";
+import { getApiKey, saveApiKey } from "./storage.js";
 import { CarouselEditor } from "./carouselEditor.js";
 
 // ── Intervalo de polling (ms) ─────────────────────────────────────
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 3000;
 
 // ── Mapeamento de faixas de progresso para mensagens de status ────
 const STATUS_MESSAGES = [
@@ -190,24 +190,18 @@ async function handleFormSubmit(event) {
   event.preventDefault();
   clearFormError();
 
-  // 1. Validar OpenAI Key no localStorage
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    showFormError(
-      "Chave da OpenAI não configurada." +
-        " Salve sua chave de API antes de gerar."
-    );
-    return;
-  }
-
-  // 2. Delegar validação ao CarouselEditor
+  // 1. Delegar validação ao CarouselEditor
   const { isValid, values, message } = editor.validate();
   if (!isValid) {
     showFormError(message);
     return;
   }
 
-  const { contextId, prompt, style, aspectRatio, slideCount } = values;
+  const { contextId, prompt, style, aspectRatio, slideCount, openaiApiKey } =
+    values;
+
+  // 2. Persistir a OpenAI API Key validada no localStorage
+  saveApiKey(openaiApiKey);
 
   // 3. Mostrar modal e desabilitar botão
   resetModal();
