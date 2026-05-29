@@ -7,6 +7,7 @@ from app.services.openai_client import (
     ContentFilterClientError,
     InvalidAPIKeyClientError,
     OpenAIClientError,
+    OPENAI_TIMEOUT_SECONDS,
     RateLimitClientError,
     _MAX_PROMPT_LENGTH,
     generate_slide_image,
@@ -41,7 +42,10 @@ def test_generate_slide_image_success(mock_openai_cls: MagicMock) -> None:
         image_prompt=_VALID_PROMPT,
     )
 
-    mock_openai_cls.assert_called_once_with(api_key=_VALID_KEY)
+    mock_openai_cls.assert_called_once_with(
+        api_key=_VALID_KEY,
+        timeout=OPENAI_TIMEOUT_SECONDS,
+    )
     mock_client.images.generate.assert_called_once_with(
         model="dall-e-3",
         prompt=_VALID_PROMPT,

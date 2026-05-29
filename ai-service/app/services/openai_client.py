@@ -10,12 +10,14 @@ from app.core.retry import (
     DEFAULT_RETRY_WAIT_MULTIPLIER,
     retry_sleep,
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "dall-e-3"
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_QUALITY = "standard"
+OPENAI_TIMEOUT_SECONDS = settings.openai_timeout_seconds
 
 _MAX_PROMPT_LENGTH = 4000
 
@@ -100,7 +102,10 @@ def _generate_slide_image_with_retry(
     size: str,
     quality: str,
 ) -> str:
-    client = openai.OpenAI(api_key=openai_api_key)
+    client = openai.OpenAI(
+        api_key=openai_api_key,
+        timeout=OPENAI_TIMEOUT_SECONDS,
+    )
 
     try:
         response = client.images.generate(
