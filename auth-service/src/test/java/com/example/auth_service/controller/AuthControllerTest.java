@@ -131,9 +131,9 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.message").value("Validation failed"))
-			.andExpect(jsonPath("$.errors.email").exists())
-			.andExpect(jsonPath("$.errors.password").exists())
-			.andExpect(jsonPath("$.errors.name").exists());
+			.andExpect(jsonPath("$.errors.email").value("Email must be valid"))
+			.andExpect(jsonPath("$.errors.password").value("Password must be between 8 and 255 characters"))
+			.andExpect(jsonPath("$.errors.name").value("Name is required"));
 	}
 
 	@Test
@@ -193,8 +193,8 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.message").value("Validation failed"))
-			.andExpect(jsonPath("$.errors.email").exists())
-			.andExpect(jsonPath("$.errors.password").exists());
+			.andExpect(jsonPath("$.errors.email").value("Email must be valid"))
+			.andExpect(jsonPath("$.errors.password").value("Password is required"));
 	}
 
 	@Test
