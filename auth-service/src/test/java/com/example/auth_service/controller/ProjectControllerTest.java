@@ -71,6 +71,11 @@ class ProjectControllerTest {
 		mockMvc.perform(get("/projects/" + UUID.randomUUID()))
 			.andExpect(status().isUnauthorized());
 
+		mockMvc.perform(post("/projects/" + UUID.randomUUID() + "/slides")
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("{}"))
+			.andExpect(status().isUnauthorized());
+
 		mockMvc.perform(delete("/projects/" + UUID.randomUUID()))
 			.andExpect(status().isUnauthorized());
 	}
@@ -207,6 +212,131 @@ class ProjectControllerTest {
 			.header("Authorization", "Bearer " + token))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.message").value("Project not found with id: " + projectId));
+	}
+
+	@Test
+	void saveProjectSlidesOverwritesAndReturnsUpdatedProject() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		UUID slideOneId = UUID.randomUUID();
+		UUID slideTwoId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "Project with slides", "Description", "processing");
+		project.setId(projectId);
+		project.setCreatedAt(LocalDateTime.of(2026, 5, 29, 13, 0));
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+		when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(projectSlideRepository.saveAll(any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			List<ProjectSlide> slides = (List<ProjectSlide>) invocation.getArgument(0);
+			slides.get(0).setId(slideOneId);
+			slides.get(0).setGeneratedAt(LocalDateTime.of(2026, 5, 29, 14, 1));
+			slides.get(1).setId(slideTwoId);
+			slides.get(1).setGeneratedAt(LocalDateTime.of(2026, 5, 29, 14, 2));
+			return slides;
+		});
+
+		mockMvc.perform(post("/projects/" + projectId + "/slides")
+			.header("Authorization", "Bearer " + token)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "slides": [
+				    {
+				      "slide_order": 2,
+				      "image_url": "https://cdn.example/2.png",
+				      "caption": "Slide 2",
+				      "prompt_used": "Prompt 2"
+				    },
+				    {
+				      "slide_order": 1,
+				      "image_url": "https://cdn.example/1.png",
+				      "caption": "Slide 1",
+				      "prompt_used": "Prompt 1"
+				    }
+				  ]
+				}
+				"""))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.status").value("done"))
+			.andExpect(jsonPath("$.slides[0].slideOrder").value(1))
+			.andExpect(jsonPath("$.slides[0].imageUrl").value("https://cdn.example/1.png"))
+			.andExpect(jsonPath("$.slides[1].slideOrder").value(2))
+			.andExpect(jsonPath("$.slides[1].imageUrl").value("https://cdn.example/2.png"));
+
+		verify(projectSlideRepository).deleteByProjectId(projectId);
+	}
+
+	@Test
+	void saveProjectSlidesRejectsInvalidOrderSequence() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "Project with slides", "Description", "processing");
+		project.setId(projectId);
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+
+		mockMvc.perform(post("/projects/" + projectId + "/slides")
+			.header("Authorization", "Bearer " + token)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "slides": [
+				    {
+				      "slide_order": 1,
+				      "image_url": "https://cdn.example/1.png",
+				      "caption": "Slide 1",
+				      "prompt_used": "Prompt 1"
+				    },
+				    {
+				      "slide_order": 3,
+				      "image_url": "https://cdn.example/3.png",
+				      "caption": "Slide 3",
+				      "prompt_used": "Prompt 3"
+				    }
+				  ]
+				}
+				"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.message").value("Slide order must be sequential starting at 1"));
+	}
+
+	@Test
+	void saveProjectSlidesRejectsEmptySlidesList() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "Project with slides", "Description", "processing");
+		project.setId(projectId);
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+
+		mockMvc.perform(post("/projects/" + projectId + "/slides")
+			.header("Authorization", "Bearer " + token)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("""
+				{
+				  "slides": []
+				}
+				"""))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.message").value("Validation failed"))
+			.andExpect(jsonPath("$.errors.slides").exists());
 	}
 
 	@Test

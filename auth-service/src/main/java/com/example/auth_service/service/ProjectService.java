@@ -2,6 +2,7 @@ package com.example.auth_service.service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Comparator;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -14,6 +15,9 @@ import com.example.auth_service.dto.CreateProjectRequest;
 import com.example.auth_service.dto.ProjectDetailResponse;
 import com.example.auth_service.dto.ProjectSlideResponse;
 import com.example.auth_service.dto.ProjectSummaryResponse;
+import com.example.auth_service.dto.SaveProjectSlidesRequest;
+import com.example.auth_service.dto.SaveProjectSlidesRequest.SaveProjectSlideItemRequest;
+import com.example.auth_service.exception.InvalidProjectSlidesException;
 import com.example.auth_service.exception.ProjectNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
 import com.example.auth_service.mapper.ProjectMapper;
@@ -77,9 +81,34 @@ public class ProjectService {
 		projectRepository.delete(project);
 	}
 
+	@Transactional
+	public ProjectDetailResponse saveProjectSlides(
+		UUID userId,
+		UUID projectId,
+		SaveProjectSlidesRequest request
+	) {
+		Project project = projectRepository.findByIdAndUserId(projectId, userId)
+			.orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+
+		List<SaveProjectSlideItemRequest> slides = normalizeAndValidateSlides(request.slides());
+
+		projectSlideRepository.deleteByProjectId(projectId);
+
+		List<ProjectSlide> entities = slides.stream()
+			.map(slide -> createSlideEntity(project, slide))
+			.toList();
+
+		List<ProjectSlide> savedSlides = projectSlideRepository.saveAll(entities);
+		project.setStatus("done");
+		Project savedProject = projectRepository.save(project);
+
+		return toDetailResponse(savedProject, savedSlides);
+	}
+
 	private ProjectDetailResponse toDetailResponse(Project project, List<ProjectSlide> slides) {
 		ProjectSummaryResponse summary = projectMapper.toSummaryResponse(project);
 		List<ProjectSlideResponse> slideResponses = slides.stream()
+			.sorted(Comparator.comparingInt(ProjectSlide::getSlideOrder))
 			.map(projectMapper::toSlideResponse)
 			.toList();
 
@@ -108,6 +137,39 @@ public class ProjectService {
 
 		String normalized = value.trim();
 		return normalized.isEmpty() ? null : normalized;
+	}
+
+	private List<SaveProjectSlideItemRequest> normalizeAndValidateSlides(
+		List<SaveProjectSlideItemRequest> slides
+	) {
+		List<SaveProjectSlideItemRequest> orderedSlides = slides.stream()
+			.sorted((left, right) -> Integer.compare(left.slideOrder(), right.slideOrder()))
+			.toList();
+
+		for (int index = 0; index < orderedSlides.size(); index++) {
+			int expectedOrder = index + 1;
+			int actualOrder = orderedSlides.get(index).slideOrder();
+			if (actualOrder != expectedOrder) {
+				throw new InvalidProjectSlidesException(
+					"Slide order must be sequential starting at 1"
+				);
+			}
+		}
+
+		return orderedSlides;
+	}
+
+	private ProjectSlide createSlideEntity(
+		Project project,
+		SaveProjectSlideItemRequest slide
+	) {
+		ProjectSlide entity = new ProjectSlide();
+		entity.setProject(project);
+		entity.setSlideOrder(slide.slideOrder());
+		entity.setImageUrl(slide.imageUrl().trim());
+		entity.setCaption(slide.caption().trim());
+		entity.setPromptUsed(slide.promptUsed().trim());
+		return entity;
 	}
 
 }

@@ -11,4 +11,6 @@ public interface ProjectSlideRepository extends JpaRepository<ProjectSlide, UUID
 
 	List<ProjectSlide> findByProjectIdOrderBySlideOrderAsc(UUID projectId);
 
+	void deleteByProjectId(UUID projectId);
+
 }
