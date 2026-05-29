@@ -213,7 +213,7 @@ class ProjectControllerTest {
 				"""))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.message").value("Validation failed"))
-			.andExpect(jsonPath("$.errors.title").exists());
+			.andExpect(jsonPath("$.errors.title").value("Project title is required"));
 	}
 
 	@Test
