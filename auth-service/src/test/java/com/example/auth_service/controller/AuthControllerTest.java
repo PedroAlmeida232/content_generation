@@ -202,7 +202,10 @@ class AuthControllerTest {
 		mockMvc.perform(post("/auth/login")
 			.contentType(MediaType.APPLICATION_JSON)
 			.content("{ invalid-json }"))
-			.andExpect(status().isBadRequest());
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Malformed JSON request"))
+			.andExpect(jsonPath("$.errors").isEmpty());
 	}
 
 	@Test
