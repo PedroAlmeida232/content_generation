@@ -70,6 +70,7 @@ JWT_EXPIRATION_MS=time_expiration_(seconds)
 # Portas dos serviços
 AUTH_PORT=8080
 AI_PORT=8000
+OPENAI_TIMEOUT_SECONDS=30
 ```
 
 Notas importantes:

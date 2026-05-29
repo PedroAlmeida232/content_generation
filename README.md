@@ -559,6 +559,7 @@ SPRING_PROFILES_ACTIVE=dev
 
 # ─── AI Service ───────────────────────────────────────────────
 AI_PORT=8000
+OPENAI_TIMEOUT_SECONDS=30
 # NOTA: A OpenAI API Key NÃO vai aqui.
 # Ela é enviada pelo usuário via header X-OpenAI-Key a cada request.
 
@@ -569,3 +570,4 @@ VITE_AI_API_URL=/api/ai
 
 # Padrão de Commit
 https://dev.to/renatoadorno/padroes-de-commits-commit-patterns-41co
+

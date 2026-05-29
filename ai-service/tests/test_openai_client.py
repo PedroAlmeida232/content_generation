@@ -7,6 +7,7 @@ from app.services.openai_client import (
     ContentFilterClientError,
     InvalidAPIKeyClientError,
     OpenAIClientError,
+    OPENAI_TIMEOUT_SECONDS,
     RateLimitClientError,
     _MAX_PROMPT_LENGTH,
     generate_slide_image,
@@ -15,6 +16,11 @@ from app.services.openai_client import (
 _VALID_KEY = "sk-test-key-1234"
 _VALID_PROMPT = "A minimalist product shot on white background"
 _FAKE_URL = "https://oaidalleapiprodscus.blob.core.windows.net/fake.png"
+
+
+@pytest.fixture(autouse=True)
+def disable_retry_sleep(monkeypatch):
+    monkeypatch.setattr("app.core.retry._sleep", lambda seconds: None)
 
 
 def _make_mock_response(url: str = _FAKE_URL) -> MagicMock:
@@ -36,7 +42,10 @@ def test_generate_slide_image_success(mock_openai_cls: MagicMock) -> None:
         image_prompt=_VALID_PROMPT,
     )
 
-    mock_openai_cls.assert_called_once_with(api_key=_VALID_KEY)
+    mock_openai_cls.assert_called_once_with(
+        api_key=_VALID_KEY,
+        timeout=OPENAI_TIMEOUT_SECONDS,
+    )
     mock_client.images.generate.assert_called_once_with(
         model="dall-e-3",
         prompt=_VALID_PROMPT,
@@ -182,6 +191,30 @@ def test_generate_raises_rate_limit_error(
             openai_api_key=_VALID_KEY,
             image_prompt=_VALID_PROMPT,
         )
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_retries_rate_limit_then_succeeds(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.images.generate.side_effect = [
+        openai.RateLimitError(
+            message="rate limit exceeded",
+            response=MagicMock(status_code=429),
+            body={},
+        ),
+        _make_mock_response(),
+    ]
+    mock_openai_cls.return_value = mock_client
+
+    result = generate_slide_image(
+        openai_api_key=_VALID_KEY,
+        image_prompt=_VALID_PROMPT,
+    )
+
+    assert result == _FAKE_URL
+    assert mock_client.images.generate.call_count == 2
 
 
 @patch("app.services.openai_client.openai.OpenAI")
