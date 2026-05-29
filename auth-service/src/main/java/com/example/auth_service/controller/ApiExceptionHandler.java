@@ -14,6 +14,7 @@ import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
 import com.example.auth_service.exception.InvalidCredentialsException;
+import com.example.auth_service.exception.ProjectNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
 
 @RestControllerAdvice
@@ -45,6 +46,12 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(UserNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+			.body(new ErrorResponse(exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(ProjectNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleProjectNotFound(ProjectNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 			.body(new ErrorResponse(exception.getMessage(), Map.of()));
 	}

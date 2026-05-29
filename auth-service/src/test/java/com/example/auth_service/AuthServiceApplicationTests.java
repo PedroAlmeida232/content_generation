@@ -15,6 +15,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.example.auth_service.domain.User;
 import com.example.auth_service.domain.UserContext;
+import com.example.auth_service.repository.ProjectRepository;
+import com.example.auth_service.repository.ProjectSlideRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.repository.UserContextRepository;
 import com.example.auth_service.service.JwtService;
@@ -49,6 +51,12 @@ class AuthServiceApplicationTests {
 
 	@MockitoBean
 	private UserContextRepository userContextRepository;
+
+	@MockitoBean
+	private ProjectRepository projectRepository;
+
+	@MockitoBean
+	private ProjectSlideRepository projectSlideRepository;
 
 	@Test
 	void healthEndpointReturnsOkWithoutAuthentication() throws Exception {
