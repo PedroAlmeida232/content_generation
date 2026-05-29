@@ -2,7 +2,13 @@
 import logging
 
 import openai
-from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_exponential
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.retry import (
     DEFAULT_RETRY_ATTEMPTS,
@@ -48,10 +54,16 @@ _API_STATUS_ERROR = getattr(openai, "APIStatusError", None)
 
 
 def _is_retryable_openai_error(exception: BaseException) -> bool:
-    if isinstance(exception, (RateLimitClientError, TransientOpenAIClientError)):
+    if isinstance(
+        exception,
+        (RateLimitClientError, TransientOpenAIClientError),
+    ):
         return True
 
-    if _API_STATUS_ERROR is not None and isinstance(exception, _API_STATUS_ERROR):
+    if (
+        _API_STATUS_ERROR is not None
+        and isinstance(exception, _API_STATUS_ERROR)
+    ):
         status_code = getattr(exception, "status_code", None)
         if status_code is None:
             response = getattr(exception, "response", None)
@@ -134,14 +146,23 @@ def _generate_slide_image_with_retry(
         ) from error
     except Exception as error:
         if (
-            (_API_CONNECTION_ERROR is not None and isinstance(error, _API_CONNECTION_ERROR))
-            or (_API_TIMEOUT_ERROR is not None and isinstance(error, _API_TIMEOUT_ERROR))
+            (
+                _API_CONNECTION_ERROR is not None
+                and isinstance(error, _API_CONNECTION_ERROR)
+            )
+            or (
+                _API_TIMEOUT_ERROR is not None
+                and isinstance(error, _API_TIMEOUT_ERROR)
+            )
         ):
             raise TransientOpenAIClientError(
                 "Temporary failure communicating with OpenAI"
             ) from error
 
-        if _API_STATUS_ERROR is not None and isinstance(error, _API_STATUS_ERROR):
+        if (
+            _API_STATUS_ERROR is not None
+            and isinstance(error, _API_STATUS_ERROR)
+        ):
             status_code = getattr(error, "status_code", None)
             if status_code is None:
                 response = getattr(error, "response", None)
