@@ -3,6 +3,7 @@ package com.example.auth_service.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -410,6 +411,23 @@ class ProjectControllerTest {
 			.andExpect(status().isNoContent());
 
 		verify(projectRepository).delete(project);
+		verifyNoInteractions(projectSlideRepository);
+	}
+
+	@Test
+	void deleteProjectReturnsNotFoundForAnotherUsersProject() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.empty());
+
+		mockMvc.perform(delete("/projects/" + projectId)
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.message").value("Project not found with id: " + projectId));
+
+		verifyNoInteractions(projectSlideRepository);
 	}
 
 	private static Project project(User user, String title, String description, String status) {
