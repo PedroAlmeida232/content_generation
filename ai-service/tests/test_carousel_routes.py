@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import encode_test_token
+from app.core.rate_limit import DailyGenerationLimitExceeded
 
 _CONTEXT_ID = str(uuid4())
 _JOB_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -50,6 +51,13 @@ def auth_headers(authorization_header) -> dict[str, str]:
 def auth_headers_no_key(authorization_header) -> dict[str, str]:
     token = encode_test_token()
     return authorization_header(token)
+
+
+@pytest.fixture(autouse=True)
+def mock_daily_generation_limit():
+    with patch(f"{_CAROUSEL_PATH}.check_daily_generation_limit") as mock_limit:
+        mock_limit.return_value = 1
+        yield mock_limit
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +153,47 @@ def test_generate_carousel_context_not_found(
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+@patch(f"{_CAROUSEL_PATH}.generate_carousel")
+@patch(f"{_CAROUSEL_PATH}.save_redis_status")
+@patch(
+    f"{_CAROUSEL_PATH}.fetch_brand_context",
+    new_callable=AsyncMock,
+)
+def test_generate_carousel_rejects_daily_limit(
+    mock_fetch,
+    mock_save,
+    mock_task,
+    client: TestClient,
+    auth_headers: dict[str, str],
+    mock_daily_generation_limit,
+) -> None:
+    mock_fetch.return_value = _CONTEXT_PAYLOAD
+    mock_daily_generation_limit.side_effect = DailyGenerationLimitExceeded(
+        "Daily generation limit reached. Try again tomorrow."
+    )
+    mock_task.apply_async = MagicMock()
+
+    response = client.post(
+        "/generate/carousel",
+        json={
+            "context_id": _CONTEXT_ID,
+            "prompt": "Post sobre lancamento",
+            "style": "minimalista",
+            "aspect_ratio": "4:5",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 429
+    assert (
+        response.json()["detail"]
+        == "Daily generation limit reached. Try again tomorrow."
+    )
+    mock_fetch.assert_awaited_once()
+    mock_save.assert_not_called()
+    mock_task.apply_async.assert_not_called()
 
 
 def test_generate_carousel_missing_jwt(

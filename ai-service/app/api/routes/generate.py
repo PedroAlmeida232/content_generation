@@ -3,6 +3,10 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import CurrentUser, OpenAIKey, RawToken
+from app.core.rate_limit import (
+    DailyGenerationLimitExceeded,
+    check_daily_generation_limit,
+)
 from app.core.redis import get_redis_status, save_redis_status
 from app.schemas.carousel import (
     CarouselRequest,
@@ -137,11 +141,20 @@ async def generate_carousel_route(
             detail=f"Failed to reach auth-service: {exc}",
         ) from exc
 
-    # 2. Gerar job_id e registrar status inicial no Redis
+    # 2. Verificar limite diario por usuario antes de enfileirar
+    try:
+        check_daily_generation_limit(current_user.user_id)
+    except DailyGenerationLimitExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+
+    # 3. Gerar job_id e registrar status inicial no Redis
     job_id = str(uuid.uuid4())
     save_redis_status(job_id, "pending")
 
-    # 3. Enfileirar task Celery (task_id = job_id para correlação)
+    # 4. Enfileirar task Celery (task_id = job_id para correlação)
     generate_carousel.apply_async(
         kwargs={
             "openai_api_key": openai_key,
