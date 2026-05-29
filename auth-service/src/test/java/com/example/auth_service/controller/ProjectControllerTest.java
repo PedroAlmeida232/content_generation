@@ -162,6 +162,19 @@ class ProjectControllerTest {
 	}
 
 	@Test
+	void listProjectsRejectsInvalidPageType() throws Exception {
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		mockMvc.perform(get("/projects?page=abc")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.message").value("Invalid value for request parameter: page"))
+			.andExpect(jsonPath("$.errors").isEmpty());
+	}
+
+	@Test
 	void createProjectPersistsAndReturnsDetail() throws Exception {
 		UUID userId = UUID.randomUUID();
 		UUID projectId = UUID.randomUUID();
