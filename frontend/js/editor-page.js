@@ -55,7 +55,10 @@ let pollingTimer = null;
 let isPolling = false;
 let currentSlides = [];
 let currentAspectRatio = "1:1";
+let editorReady = false;
 const originalSubmitHtml = submitBtn.innerHTML;
+
+submitBtn.disabled = true;
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -202,6 +205,11 @@ async function handleFormSubmit(event) {
   event.preventDefault();
   clearFormError();
 
+  if (!editorReady) {
+    showFormError("Aguarde o carregamento dos contextos do editor.");
+    return;
+  }
+
   // 1. Delegar validação ao CarouselEditor
   const { isValid, values, message } = editor.validate();
   if (!isValid) {
@@ -292,10 +300,16 @@ function handleCloseBtn() {
 const session = requireAuthenticatedSession("/pages/editor.html");
 
 if (session) {
-  // Inicializar editor (carrega estilos dinamicamente)
-  editor.init().catch((err) => {
-    console.error("[editor-page] Falha ao inicializar editor:", err);
-  });
+  // Inicializar editor (carrega estilos e contextos dinamicamente)
+  editor
+    .init()
+    .catch((err) => {
+      console.error("[editor-page] Falha ao inicializar editor:", err);
+    })
+    .finally(() => {
+      editorReady = true;
+      submitBtn.disabled = false;
+    });
 
   form.addEventListener("submit", handleFormSubmit);
   closeBtn.addEventListener("click", handleCloseBtn);
