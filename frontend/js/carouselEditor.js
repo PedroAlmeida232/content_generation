@@ -1,26 +1,17 @@
 /**
- * carouselEditor.js — Módulo de gerenciamento do formulário de
+ * carouselEditor.js - Módulo de gerenciamento do formulário de
  * criação de carrossel.
- *
- * Responsabilidades:
- *  1. Carregar os estilos visuais dinamicamente via GET /styles.
- *  2. Extrair e sanitizar os valores de todos os campos do form.
- *  3. Validar os dados segundo as regras de negócio antes do envio.
  */
 
 import { aiApi, authApi, ApiError } from "./apiClient.js";
 import { getApiKey } from "./storage.js";
 
-// Regex para validação de UUID v4 no campo context_id.
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const VALID_ASPECT_RATIOS = ["1:1", "4:5", "9:16"];
 
 export class CarouselEditor {
-  /**
-   * @param {HTMLFormElement} form - Referência ao elemento <form>.
-   */
   constructor(form) {
     this.form = form;
     this._styleSelect = form.querySelector("#style");
@@ -30,55 +21,72 @@ export class CarouselEditor {
     this._slideCountInput = form.querySelector("#slide-count");
     this._apiKeyInput = form.querySelector("#openai-key");
     this._apiKeyToggle = form.querySelector("#openai-key-toggle");
+    this._contextsReady = false;
+    this._contextsPromise = null;
   }
 
-  /**
-   * Inicializa o editor: carrega os estilos e contextos disponíveis.
-   * Deve ser chamado uma única vez ao montar a página.
-   *
-   * @returns {Promise<void>}
-   */
   async init() {
     await Promise.all([this._loadStyles(), this.loadContexts()]);
     this._initApiKeyField();
   }
 
+  isReady() {
+    return this._contextsReady;
+  }
+
   async loadContexts() {
-    try {
-      const contexts = await authApi.get("/contexts");
+    if (!this._contextInput) {
+      this._contextsReady = true;
+      return;
+    }
 
-      if (!Array.isArray(contexts) || contexts.length === 0) {
-        this._fallbackContexts();
-        return;
+    if (this._contextsPromise) {
+      return this._contextsPromise;
+    }
+
+    const previousValue = this._contextInput.value;
+    const loadPromise = (async () => {
+      try {
+        const contexts = await authApi.get("/contexts");
+
+        if (!Array.isArray(contexts) || contexts.length === 0) {
+          this._fallbackContexts(previousValue);
+          return;
+        }
+
+        this._contextInput.innerHTML = "";
+        this._appendContextPlaceholder();
+
+        contexts.forEach((ctx) => {
+          const option = document.createElement("option");
+          option.value = ctx.id;
+          option.textContent = ctx.contextKey || ctx.id;
+          this._contextInput.appendChild(option);
+        });
+
+        this._restoreContextSelection(previousValue);
+      } catch (err) {
+        console.warn(
+          "[CarouselEditor] Falha ao carregar contextos do auth-service:",
+          err
+        );
+        this._fallbackContexts(previousValue);
+      } finally {
+        this._contextsReady = true;
       }
+    })();
 
-      this._contextInput.innerHTML = "";
+    this._contextsPromise = loadPromise;
 
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      placeholder.textContent = "Selecione um contexto de marca";
-      this._contextInput.appendChild(placeholder);
-
-      contexts.forEach((ctx) => {
-        const option = document.createElement("option");
-        option.value = ctx.id;
-        option.textContent = ctx.contextKey;
-        this._contextInput.appendChild(option);
-      });
-    } catch (err) {
-      console.warn(
-        "[CarouselEditor] Falha ao carregar contextos do auth-service:",
-        err
-      );
-      this._fallbackContexts();
+    try {
+      await loadPromise;
+    } finally {
+      this._contextsPromise = null;
     }
   }
 
-  _fallbackContexts() {
+  _appendContextPlaceholder() {
     if (!this._contextInput) return;
-    this._contextInput.innerHTML = "";
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
@@ -86,11 +94,41 @@ export class CarouselEditor {
     placeholder.selected = true;
     placeholder.textContent = "Selecione um contexto de marca";
     this._contextInput.appendChild(placeholder);
+  }
+
+  _fallbackContexts(previousValue = "") {
+    if (!this._contextInput) return;
+
+    this._contextInput.innerHTML = "";
+    this._appendContextPlaceholder();
 
     const option = document.createElement("option");
     option.value = "550e8400-e29b-41d4-a716-446655440000";
     option.textContent = "Contexto Padrão (Demonstração)";
     this._contextInput.appendChild(option);
+
+    this._restoreContextSelection(previousValue);
+  }
+
+  _restoreContextSelection(previousValue) {
+    if (!this._contextInput) return;
+
+    if (previousValue) {
+      const hasPrevious = Array.from(this._contextInput.options).some(
+        (option) => option.value === previousValue
+      );
+      if (hasPrevious) {
+        this._contextInput.value = previousValue;
+        return;
+      }
+    }
+
+    const firstRealOption = Array.from(this._contextInput.options).find(
+      (option) => option.value
+    );
+    if (firstRealOption) {
+      this._contextInput.value = firstRealOption.value;
+    }
   }
 
   _initApiKeyField() {
@@ -98,6 +136,7 @@ export class CarouselEditor {
     if (key && this._apiKeyInput) {
       this._apiKeyInput.value = key;
     }
+
     if (this._apiKeyToggle && this._apiKeyInput) {
       this._apiKeyToggle.addEventListener("click", () => {
         const isPassword = this._apiKeyInput.type === "password";
@@ -111,8 +150,6 @@ export class CarouselEditor {
     }
   }
 
-  // ── Privado: Carregamento de Estilos ──────────────────────────────
-
   async _loadStyles() {
     try {
       const styles = await aiApi.get("/styles", { auth: false });
@@ -122,7 +159,6 @@ export class CarouselEditor {
         return;
       }
 
-      // Limpar opções e repopular dinamicamente
       this._styleSelect.innerHTML = "";
 
       const placeholder = document.createElement("option");
@@ -135,13 +171,10 @@ export class CarouselEditor {
       styles.forEach((style) => {
         const option = document.createElement("option");
         option.value = style;
-        // Capitalizar a primeira letra para exibição
-        option.textContent =
-          style.charAt(0).toUpperCase() + style.slice(1);
+        option.textContent = style.charAt(0).toUpperCase() + style.slice(1);
         this._styleSelect.appendChild(option);
       });
     } catch (err) {
-      // Em caso de erro de rede, usar fallback estático
       console.warn(
         "[CarouselEditor] Falha ao carregar estilos do backend:",
         err instanceof ApiError ? `HTTP ${err.status}` : err.message
@@ -171,41 +204,22 @@ export class CarouselEditor {
     staticStyles.forEach((style) => {
       const option = document.createElement("option");
       option.value = style;
-      option.textContent =
-        style.charAt(0).toUpperCase() + style.slice(1);
+      option.textContent = style.charAt(0).toUpperCase() + style.slice(1);
       this._styleSelect.appendChild(option);
     });
   }
 
-  // ── Extração de Valores ───────────────────────────────────────────
-
-  /**
-   * Extrai e sanitiza os valores do formulário.
-   *
-   * @returns {{ contextId: string, prompt: string, style: string,
-   *             aspectRatio: string, slideCount: number }}
-   */
   getValues() {
     return {
       contextId: (this._contextInput?.value ?? "").trim(),
       prompt: (this._promptTextarea?.value ?? "").trim(),
       style: this._styleSelect?.value ?? "",
       aspectRatio: this._formatSelect?.value ?? "",
-      slideCount: parseInt(
-        this._slideCountInput?.value ?? "0",
-        10
-      ),
+      slideCount: parseInt(this._slideCountInput?.value ?? "0", 10),
       openaiApiKey: (this._apiKeyInput?.value ?? "").trim(),
     };
   }
 
-  // ── Validação ─────────────────────────────────────────────────────
-
-  /**
-   * Valida todos os campos do formulário segundo as regras de negócio.
-   *
-   * @returns {{ isValid: boolean, values: object, message: string }}
-   */
   validate() {
     const values = this.getValues();
     const {
@@ -229,8 +243,7 @@ export class CarouselEditor {
       return {
         isValid: false,
         values,
-        message:
-          "A chave API da OpenAI deve começar com 'sk-' e ser válida.",
+        message: "A chave API da OpenAI deve começar com 'sk-' e ser válida.",
       };
     }
 
