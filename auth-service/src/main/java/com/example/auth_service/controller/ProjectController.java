@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.auth_service.dto.CreateProjectRequest;
 import com.example.auth_service.dto.ProjectDetailResponse;
 import com.example.auth_service.dto.ProjectSummaryResponse;
+import com.example.auth_service.dto.SaveProjectSlidesRequest;
 import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.ProjectService;
 
@@ -52,6 +53,16 @@ public class ProjectController {
 	public ProjectDetailResponse getProject(Authentication authentication, @PathVariable UUID id) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		return projectService.getProject(principal.userId(), id);
+	}
+
+	@PostMapping("/{id}/slides")
+	public ProjectDetailResponse saveProjectSlides(
+		Authentication authentication,
+		@PathVariable UUID id,
+		@Valid @RequestBody SaveProjectSlidesRequest request
+	) {
+		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+		return projectService.saveProjectSlides(principal.userId(), id, request);
 	}
 
 	@DeleteMapping("/{id}")
