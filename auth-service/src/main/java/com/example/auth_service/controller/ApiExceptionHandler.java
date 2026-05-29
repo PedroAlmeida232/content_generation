@@ -13,6 +13,7 @@ import com.example.auth_service.dto.ErrorResponse;
 import com.example.auth_service.exception.ContextAlreadyExistsException;
 import com.example.auth_service.exception.ContextNotFoundException;
 import com.example.auth_service.exception.EmailAlreadyInUseException;
+import com.example.auth_service.exception.InvalidProjectListRequestException;
 import com.example.auth_service.exception.InvalidCredentialsException;
 import com.example.auth_service.exception.InvalidProjectSlidesException;
 import com.example.auth_service.exception.ProjectNotFoundException;
@@ -59,6 +60,14 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(InvalidProjectSlidesException.class)
 	ResponseEntity<ErrorResponse> handleInvalidProjectSlides(InvalidProjectSlidesException exception) {
+		return ResponseEntity.badRequest()
+			.body(new ErrorResponse(exception.getMessage(), Map.of()));
+	}
+
+	@ExceptionHandler(InvalidProjectListRequestException.class)
+	ResponseEntity<ErrorResponse> handleInvalidProjectListRequest(
+		InvalidProjectListRequestException exception
+	) {
 		return ResponseEntity.badRequest()
 			.body(new ErrorResponse(exception.getMessage(), Map.of()));
 	}
