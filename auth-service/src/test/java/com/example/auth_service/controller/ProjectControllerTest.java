@@ -1,6 +1,7 @@
 package com.example.auth_service.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,6 +21,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -96,16 +100,64 @@ class ProjectControllerTest {
 		second.setId(UUID.randomUUID());
 		second.setCreatedAt(LocalDateTime.of(2026, 5, 29, 11, 0));
 
-		when(projectRepository.findByUserIdOrderByCreatedAtDesc(userId))
-			.thenReturn(List.of(second, first));
+		when(projectRepository.findByUserId(eq(userId), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(
+				List.of(second, first),
+				PageRequest.of(0, 10),
+				2
+			));
 
 		mockMvc.perform(get("/projects")
 			.header("Authorization", "Bearer " + token))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-			.andExpect(jsonPath("$[0].title").value("Second project"))
-			.andExpect(jsonPath("$[0].status").value("done"))
-			.andExpect(jsonPath("$[1].title").value("First project"));
+			.andExpect(jsonPath("$.content[0].title").value("Second project"))
+			.andExpect(jsonPath("$.content[0].status").value("done"))
+			.andExpect(jsonPath("$.content[1].title").value("First project"))
+			.andExpect(jsonPath("$.page").value(0))
+			.andExpect(jsonPath("$.size").value(10))
+			.andExpect(jsonPath("$.totalElements").value(2))
+			.andExpect(jsonPath("$.totalPages").value(1))
+			.andExpect(jsonPath("$.hasNext").value(false));
+	}
+
+	@Test
+	void listProjectsFiltersByStatusWhenProvided() throws Exception {
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project doneProject = project(user, "Done project", "Done description", "done");
+		doneProject.setId(UUID.randomUUID());
+		doneProject.setCreatedAt(LocalDateTime.of(2026, 5, 29, 11, 0));
+
+		when(projectRepository.findByUserIdAndStatusIgnoreCase(eq(userId), eq("done"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(
+				List.of(doneProject),
+				PageRequest.of(0, 10),
+				1
+			));
+
+		mockMvc.perform(get("/projects?status=done&page=0&size=10")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.content.length()").value(1))
+			.andExpect(jsonPath("$.content[0].title").value("Done project"))
+			.andExpect(jsonPath("$.content[0].status").value("done"));
+	}
+
+	@Test
+	void listProjectsRejectsInvalidStatusFilter() throws Exception {
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		mockMvc.perform(get("/projects?status=archived")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.message").value("Invalid project status: archived"));
 	}
 
 	@Test

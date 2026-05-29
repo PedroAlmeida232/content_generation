@@ -1,10 +1,15 @@
 package com.example.auth_service.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Comparator;
+import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,10 +18,12 @@ import com.example.auth_service.domain.ProjectSlide;
 import com.example.auth_service.domain.User;
 import com.example.auth_service.dto.CreateProjectRequest;
 import com.example.auth_service.dto.ProjectDetailResponse;
+import com.example.auth_service.dto.ProjectPageResponse;
 import com.example.auth_service.dto.ProjectSlideResponse;
 import com.example.auth_service.dto.ProjectSummaryResponse;
 import com.example.auth_service.dto.SaveProjectSlidesRequest;
 import com.example.auth_service.dto.SaveProjectSlidesRequest.SaveProjectSlideItemRequest;
+import com.example.auth_service.exception.InvalidProjectListRequestException;
 import com.example.auth_service.exception.InvalidProjectSlidesException;
 import com.example.auth_service.exception.ProjectNotFoundException;
 import com.example.auth_service.exception.UserNotFoundException;
@@ -27,6 +34,15 @@ import com.example.auth_service.repository.UserRepository;
 
 @Service
 public class ProjectService {
+
+	private static final int MAX_SIZE = 100;
+	private static final Set<String> ALLOWED_STATUSES = Set.of(
+		"draft",
+		"generating",
+		"done",
+		"failed",
+		"processing"
+	);
 
 	private final ProjectRepository projectRepository;
 	private final ProjectSlideRepository projectSlideRepository;
@@ -45,10 +61,34 @@ public class ProjectService {
 		this.projectMapper = projectMapper;
 	}
 
-	public List<ProjectSummaryResponse> getProjects(UUID userId) {
-		return projectRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+	@Transactional(readOnly = true)
+	public ProjectPageResponse getProjects(UUID userId, int page, int size, String status) {
+		int normalizedPage = normalizePage(page);
+		int normalizedSize = normalizeSize(size);
+		String normalizedStatus = normalizeStatus(status);
+
+		Pageable pageable = PageRequest.of(
+			normalizedPage,
+			normalizedSize,
+			Sort.by(Sort.Direction.DESC, "createdAt")
+		);
+
+		Page<Project> projects = normalizedStatus == null
+			? projectRepository.findByUserId(userId, pageable)
+			: projectRepository.findByUserIdAndStatusIgnoreCase(userId, normalizedStatus, pageable);
+
+		List<ProjectSummaryResponse> content = projects.getContent().stream()
 			.map(projectMapper::toSummaryResponse)
 			.toList();
+
+		return new ProjectPageResponse(
+			content,
+			projects.getNumber(),
+			projects.getSize(),
+			projects.getTotalElements(),
+			projects.getTotalPages(),
+			projects.hasNext()
+		);
 	}
 
 	@Transactional
@@ -128,6 +168,39 @@ public class ProjectService {
 		}
 
 		return status.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private int normalizePage(int page) {
+		if (page < 0) {
+			throw new InvalidProjectListRequestException("Page must be greater than or equal to 0");
+		}
+
+		return page;
+	}
+
+	private int normalizeSize(int size) {
+		if (size < 1) {
+			throw new InvalidProjectListRequestException("Size must be greater than or equal to 1");
+		}
+
+		if (size > MAX_SIZE) {
+			throw new InvalidProjectListRequestException("Size must not exceed " + MAX_SIZE);
+		}
+
+		return size;
+	}
+
+	private String normalizeStatus(String status) {
+		if (status == null || status.trim().isEmpty()) {
+			return null;
+		}
+
+		String normalized = status.trim().toLowerCase(Locale.ROOT);
+		if (!ALLOWED_STATUSES.contains(normalized)) {
+			throw new InvalidProjectListRequestException("Invalid project status: " + status);
+		}
+
+		return normalized;
 	}
 
 	private String normalizeNullable(String value) {

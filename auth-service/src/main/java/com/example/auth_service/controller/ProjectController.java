@@ -1,6 +1,5 @@
 package com.example.auth_service.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -14,11 +13,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth_service.dto.CreateProjectRequest;
 import com.example.auth_service.dto.ProjectDetailResponse;
-import com.example.auth_service.dto.ProjectSummaryResponse;
+import com.example.auth_service.dto.ProjectPageResponse;
 import com.example.auth_service.dto.SaveProjectSlidesRequest;
 import com.example.auth_service.security.JwtAuthenticationFilter.JwtPrincipal;
 import com.example.auth_service.service.ProjectService;
@@ -34,9 +34,14 @@ public class ProjectController {
 	}
 
 	@GetMapping
-	public List<ProjectSummaryResponse> getProjects(Authentication authentication) {
+	public ProjectPageResponse getProjects(
+		Authentication authentication,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "10") int size,
+		@RequestParam(required = false) String status
+	) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
-		return projectService.getProjects(principal.userId());
+		return projectService.getProjects(principal.userId(), page, size, status);
 	}
 
 	@PostMapping

@@ -330,7 +330,7 @@ Frontend → GET /api/ai/jobs/{job_id}    (a cada 3 segundos)
 | `GET` | `/contexts/{id}` | Detalhe de um contexto | ✅ |
 | `PUT` | `/contexts/{id}` | Editar contexto | ✅ |
 | `DELETE` | `/contexts/{id}` | Remover contexto | ✅ |
-| `GET` | `/projects` | Listar projetos do usuário | ✅ |
+| `GET` | `/projects` | Listar projetos do usuário com paginação e filtro por status (`?page=0&size=10&status=draft|generating|done|failed`) | ✅ |
 | `POST` | `/projects` | Criar novo projeto | ✅ |
 | `GET` | `/projects/{id}` | Detalhe e slides do projeto | ✅ |
 | `DELETE` | `/projects/{id}` | Remover projeto | ✅ |
