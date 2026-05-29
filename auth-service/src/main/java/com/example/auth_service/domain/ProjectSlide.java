@@ -18,10 +18,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "projects")
+@Table(name = "project_slides")
 @Getter
 @Setter
-public class Project {
+public class ProjectSlide {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
@@ -29,20 +29,23 @@ public class Project {
 	private UUID id;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "user_id", nullable = false)
-	private User user;
+	@JoinColumn(name = "project_id", nullable = false)
+	private Project project;
 
-	@Column(nullable = false)
-	private String name;
+	@Column(name = "slide_order", nullable = false)
+	private int slideOrder;
+
+	@Column(name = "image_url")
+	private String imageUrl;
 
 	@Column
-	private String description;
+	private String caption;
 
-	@Column(nullable = false, length = 50)
-	private String status = "ACTIVE";
+	@Column(name = "prompt_used")
+	private String promptUsed;
 
-	@Column(name = "created_at", nullable = false)
+	@Column(name = "generated_at", nullable = false)
 	@CreationTimestamp
-	private LocalDateTime createdAt;
+	private LocalDateTime generatedAt;
 
 }

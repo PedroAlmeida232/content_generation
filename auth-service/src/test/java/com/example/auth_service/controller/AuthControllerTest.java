@@ -27,6 +27,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.auth_service.domain.User;
 import com.example.auth_service.repository.UserContextRepository;
+import com.example.auth_service.repository.ProjectRepository;
+import com.example.auth_service.repository.ProjectSlideRepository;
 import com.example.auth_service.repository.UserRepository;
 import com.example.auth_service.service.JwtService;
 
@@ -55,6 +57,12 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private UserContextRepository userContextRepository;
+
+	@MockitoBean
+	private ProjectRepository projectRepository;
+
+	@MockitoBean
+	private ProjectSlideRepository projectSlideRepository;
 
 	@Test
 	void registerReturnsCreatedWithUserId() throws Exception {
