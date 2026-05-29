@@ -17,6 +17,11 @@ _VALID_PROMPT = "A minimalist product shot on white background"
 _FAKE_URL = "https://oaidalleapiprodscus.blob.core.windows.net/fake.png"
 
 
+@pytest.fixture(autouse=True)
+def disable_retry_sleep(monkeypatch):
+    monkeypatch.setattr("app.core.retry._sleep", lambda seconds: None)
+
+
 def _make_mock_response(url: str = _FAKE_URL) -> MagicMock:
     mock_image = MagicMock()
     mock_image.url = url
@@ -182,6 +187,30 @@ def test_generate_raises_rate_limit_error(
             openai_api_key=_VALID_KEY,
             image_prompt=_VALID_PROMPT,
         )
+
+
+@patch("app.services.openai_client.openai.OpenAI")
+def test_generate_retries_rate_limit_then_succeeds(
+    mock_openai_cls: MagicMock,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.images.generate.side_effect = [
+        openai.RateLimitError(
+            message="rate limit exceeded",
+            response=MagicMock(status_code=429),
+            body={},
+        ),
+        _make_mock_response(),
+    ]
+    mock_openai_cls.return_value = mock_client
+
+    result = generate_slide_image(
+        openai_api_key=_VALID_KEY,
+        image_prompt=_VALID_PROMPT,
+    )
+
+    assert result == _FAKE_URL
+    assert mock_client.images.generate.call_count == 2
 
 
 @patch("app.services.openai_client.openai.OpenAI")
