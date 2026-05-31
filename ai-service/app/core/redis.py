@@ -51,4 +51,7 @@ def cancel_redis_status(job_id: str) -> None:
 def is_job_cancelled(job_id: str) -> bool:
     """Indica se o job atual foi cancelado."""
     payload = get_redis_status(job_id)
-    return payload is not None and payload.get("status") == JobStatus.CANCELLED.value
+    return (
+        payload is not None
+        and payload.get("status") == JobStatus.CANCELLED.value
+    )
