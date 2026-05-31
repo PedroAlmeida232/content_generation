@@ -155,6 +155,15 @@ def test_carousel_response_progress_only_when_processing() -> None:
     assert response.progress == 40
 
 
+def test_carousel_response_cancelled_without_slides() -> None:
+    response = CarouselResponse.model_validate(
+        {"job_id": JOB_ID, "status": "cancelled"}
+    )
+
+    assert response.status == JobStatus.CANCELLED
+    assert response.slides is None
+
+
 def test_job_status_serializes_as_string() -> None:
     response = CarouselResponse.model_validate(
         {"job_id": JOB_ID, "status": "pending"}

@@ -9,6 +9,7 @@ from app.schemas.carousel import (
     SlideImageResponse,
     SlideResult,
 )
+from app.schemas.metrics import UsageMetricsResponse
 from app.schemas.image_prompt import CarouselImagePrompts, SlideImagePrompt
 from app.schemas.slide_text import CarouselSlidesText, SlideText
 
@@ -26,4 +27,5 @@ __all__ = [
     "SlideImageResponse",
     "SlideResult",
     "SlideText",
+    "UsageMetricsResponse",
 ]

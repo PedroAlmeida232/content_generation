@@ -5,7 +5,7 @@ import pytest
 
 from app.schemas.image_prompt import CarouselImagePrompts, SlideImagePrompt
 from app.schemas.slide_text import CarouselSlidesText, SlideText
-from app.tasks.generate_task import generate_carousel
+from app.tasks.generate_task import JobCancelledError, generate_carousel
 
 _JOB_ID = "test-job-uuid-1234"
 _KEY = f"job:{_JOB_ID}"
@@ -40,6 +40,15 @@ def mock_image_prompts() -> CarouselImagePrompts:
             SlideImagePrompt(slide_order=2, image_prompt="Visual Prompt 2"),
         ]
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_record_generation_outcome():
+    with patch(
+        "app.tasks.generate_task.record_generation_outcome"
+    ) as mock_record:
+        mock_record.return_value = True
+        yield mock_record
 
 
 def _redis_call(
@@ -78,21 +87,24 @@ def test_generate_carousel_success(
     mock_self,
     mock_slides_text,
     mock_image_prompts,
+    caplog,
 ) -> None:
     mock_run_text.return_value = mock_slides_text
     mock_run_image.return_value = mock_image_prompts
     mock_gen_image.side_effect = ["http://cdn/1.png", "http://cdn/2.png"]
 
-    result = generate_carousel.run.__func__(
-        mock_self,
-        openai_api_key="sk-test-key",
-        prompt="Test Prompt",
-        style="minimalista",
-        slide_count=2,
-        tone="professional",
-        color_palette=["#000000"],
-        context_name="Test Brand",
-    )
+    with caplog.at_level("INFO"):
+        result = generate_carousel.run.__func__(
+            mock_self,
+            openai_api_key="sk-test-key",
+            prompt="Test Prompt",
+            style="minimalista",
+            slide_count=2,
+            tone="professional",
+            color_palette=["#000000"],
+            context_name="Test Brand",
+            user_id="user-123",
+        )
 
     # --- Chain / service calls ---
     mock_run_text.assert_called_once_with(
@@ -163,6 +175,21 @@ def test_generate_carousel_success(
     # --- Return value ---
     assert result == {"slides": expected_slides_done}
 
+    log_entries = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "app.tasks.generate_task"
+    ]
+    completed_log = next(
+        entry
+        for entry in log_entries
+        if entry.get("event") == "carousel_generation_completed"
+    )
+    assert completed_log["job_id"] == _JOB_ID
+    assert completed_log["user_id"] == "user-123"
+    assert completed_log["status"] == "done"
+    assert completed_log["duration_ms"] >= 0
+
 
 # ---------------------------------------------------------------------------
 # Failure / error handling
@@ -217,3 +244,24 @@ def test_generate_carousel_saves_failed_status_on_exception(
     )
     # Exactly 2 redis writes: initial + failed
     assert mock_redis.set.call_count == 2
+
+
+@patch(_REDIS_PATCH)
+@patch("app.tasks.generate_task.is_job_cancelled")
+def test_generate_carousel_stops_when_job_is_cancelled(
+    mock_is_cancelled,
+    mock_redis,
+    mock_self,
+) -> None:
+    mock_is_cancelled.return_value = True
+
+    with pytest.raises(JobCancelledError, match="was cancelled"):
+        generate_carousel.run.__func__(
+            mock_self,
+            openai_api_key="sk-test-key",
+            prompt="Test Prompt",
+            style="minimalista",
+            slide_count=2,
+        )
+
+    mock_redis.set.assert_not_called()

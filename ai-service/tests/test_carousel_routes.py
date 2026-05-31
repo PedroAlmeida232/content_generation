@@ -77,20 +77,22 @@ def test_generate_carousel_success(
     mock_task,
     client: TestClient,
     auth_headers: dict[str, str],
+    caplog,
 ) -> None:
     mock_fetch.return_value = _CONTEXT_PAYLOAD
     mock_task.apply_async = MagicMock()
 
-    response = client.post(
-        "/generate/carousel",
-        json={
-            "context_id": _CONTEXT_ID,
-            "prompt": "Post sobre lancamento",
-            "style": "minimalista",
-            "aspect_ratio": "4:5",
-        },
-        headers=auth_headers,
-    )
+    with caplog.at_level("INFO"):
+        response = client.post(
+            "/generate/carousel",
+            json={
+                "context_id": _CONTEXT_ID,
+                "prompt": "Post sobre lancamento",
+                "style": "minimalista",
+                "aspect_ratio": "4:5",
+            },
+            headers=auth_headers,
+        )
 
     assert response.status_code == 202
     body = response.json()
@@ -105,6 +107,21 @@ def test_generate_carousel_success(
         "kwargs", call_kwargs[1].get("kwargs", {})
     )
     assert task_kwargs.get("aspect_ratio") == "4:5"
+
+    log_entries = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == _CAROUSEL_PATH
+    ]
+    enqueued_log = next(
+        entry
+        for entry in log_entries
+        if entry.get("event") == "carousel_generation_enqueued"
+    )
+    assert enqueued_log["status"] == "pending"
+    assert enqueued_log["job_id"]
+    assert enqueued_log["user_id"]
+    assert enqueued_log["duration_ms"] >= 0
 
 
 @patch(
@@ -513,6 +530,125 @@ def test_get_job_status_failed(
     body = response.json()
     assert body["status"] == "failed"
     assert body["error"] == "Something went wrong"
+
+
+# ---------------------------------------------------------------------------
+# DELETE /jobs/{job_id}
+# ---------------------------------------------------------------------------
+
+
+@patch(f"{_CAROUSEL_PATH}.celery_app.control.revoke")
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_processing(
+    mock_get,
+    mock_cancel,
+    mock_revoke,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "processing",
+        "progress": 40,
+        "slides": None,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "cancelled"
+    assert body["job_id"] == _JOB_ID
+    mock_cancel.assert_called_once_with(_JOB_ID)
+    mock_revoke.assert_called_once_with(
+        _JOB_ID,
+        terminate=True,
+        signal="SIGTERM",
+    )
+
+
+@patch(f"{_CAROUSEL_PATH}.celery_app.control.revoke")
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_pending(
+    mock_get,
+    mock_cancel,
+    mock_revoke,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "pending",
+        "progress": None,
+        "slides": None,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+    mock_cancel.assert_called_once_with(_JOB_ID)
+    mock_revoke.assert_called_once_with(_JOB_ID)
+
+
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_done_returns_409(
+    mock_get,
+    mock_cancel,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "done",
+        "progress": None,
+        "slides": _SLIDES_DONE,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 409
+    mock_cancel.assert_not_called()
+
+
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_already_cancelled_returns_409(
+    mock_get,
+    mock_cancel,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "cancelled",
+        "progress": None,
+        "slides": None,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 409
+    mock_cancel.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
