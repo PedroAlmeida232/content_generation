@@ -7,11 +7,16 @@ from app.core.rate_limit import (
     DailyGenerationLimitExceeded,
     check_daily_generation_limit,
 )
-from app.core.redis import get_redis_status, save_redis_status
+from app.core.redis import (
+    cancel_redis_status,
+    get_redis_status,
+    save_redis_status,
+)
 from app.schemas.carousel import (
     CarouselRequest,
     CarouselResponse,
     CarouselResultResponse,
+    JobStatus,
     PreviewRequest,
     SlideImageRequest,
     SlideImageResponse,
@@ -31,6 +36,7 @@ from app.services.openai_client import (
     generate_slide_image,
 )
 from app.services.slide_text_chain import run_slide_text_chain
+from app.tasks.celery_app import celery_app
 from app.tasks.generate_task import generate_carousel
 
 router = APIRouter(prefix="/generate", tags=["generation"])
@@ -316,6 +322,58 @@ def get_job_status(
     """Polling de status do job Celery via Redis."""
     payload = _get_job_or_404(job_id)
     return CarouselResponse.model_validate(payload)
+
+
+@jobs_router.delete(
+    "/{job_id}",
+    response_model=CarouselResponse,
+    summary="Cancela geracao em andamento",
+    description=(
+        "Cancela um job em andamento quando ele estiver em "
+        "pending ou processing, marca o status como cancelled no "
+        "Redis e tenta revogar a task Celery associada."
+    ),
+)
+def cancel_job(
+    job_id: str,
+    _current_user: CurrentUser,
+) -> CarouselResponse:
+    """Cancela um job em andamento."""
+    payload = _get_job_or_404(job_id)
+    current_status = payload.get("status")
+
+    if current_status == JobStatus.CANCELLED.value:
+        return CarouselResponse.model_validate(payload)
+
+    if current_status not in (
+        JobStatus.PENDING.value,
+        JobStatus.PROCESSING.value,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Job '{job_id}' cannot be cancelled "
+                f"because it is already {current_status}"
+            ),
+        )
+
+    cancel_redis_status(job_id)
+
+    if current_status == JobStatus.PROCESSING.value:
+        celery_app.control.revoke(
+            job_id,
+            terminate=True,
+            signal="SIGTERM",
+        )
+    else:
+        celery_app.control.revoke(job_id)
+
+    return CarouselResponse.model_validate(
+        {
+            "job_id": job_id,
+            "status": JobStatus.CANCELLED.value,
+        }
+    )
 
 
 @jobs_router.get(

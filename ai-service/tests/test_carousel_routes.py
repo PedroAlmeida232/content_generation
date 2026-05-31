@@ -516,6 +516,100 @@ def test_get_job_status_failed(
 
 
 # ---------------------------------------------------------------------------
+# DELETE /jobs/{job_id}
+# ---------------------------------------------------------------------------
+
+
+@patch(f"{_CAROUSEL_PATH}.celery_app.control.revoke")
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_processing(
+    mock_get,
+    mock_cancel,
+    mock_revoke,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "processing",
+        "progress": 40,
+        "slides": None,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "cancelled"
+    assert body["job_id"] == _JOB_ID
+    mock_cancel.assert_called_once_with(_JOB_ID)
+    mock_revoke.assert_called_once_with(
+        _JOB_ID,
+        terminate=True,
+        signal="SIGTERM",
+    )
+
+
+@patch(f"{_CAROUSEL_PATH}.celery_app.control.revoke")
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_pending(
+    mock_get,
+    mock_cancel,
+    mock_revoke,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "pending",
+        "progress": None,
+        "slides": None,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+    mock_cancel.assert_called_once_with(_JOB_ID)
+    mock_revoke.assert_called_once_with(_JOB_ID)
+
+
+@patch(f"{_CAROUSEL_PATH}.cancel_redis_status")
+@patch(f"{_CAROUSEL_PATH}.get_redis_status")
+def test_cancel_job_done_returns_409(
+    mock_get,
+    mock_cancel,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    mock_get.return_value = {
+        "job_id": _JOB_ID,
+        "status": "done",
+        "progress": None,
+        "slides": _SLIDES_DONE,
+        "error": None,
+    }
+
+    response = client.delete(
+        f"/jobs/{_JOB_ID}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 409
+    mock_cancel.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # GET /jobs/{job_id}/result
 # ---------------------------------------------------------------------------
 

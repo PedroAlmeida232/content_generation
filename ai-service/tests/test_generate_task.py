@@ -5,7 +5,7 @@ import pytest
 
 from app.schemas.image_prompt import CarouselImagePrompts, SlideImagePrompt
 from app.schemas.slide_text import CarouselSlidesText, SlideText
-from app.tasks.generate_task import generate_carousel
+from app.tasks.generate_task import JobCancelledError, generate_carousel
 
 _JOB_ID = "test-job-uuid-1234"
 _KEY = f"job:{_JOB_ID}"
@@ -217,3 +217,24 @@ def test_generate_carousel_saves_failed_status_on_exception(
     )
     # Exactly 2 redis writes: initial + failed
     assert mock_redis.set.call_count == 2
+
+
+@patch(_REDIS_PATCH)
+@patch("app.tasks.generate_task.is_job_cancelled")
+def test_generate_carousel_stops_when_job_is_cancelled(
+    mock_is_cancelled,
+    mock_redis,
+    mock_self,
+) -> None:
+    mock_is_cancelled.return_value = True
+
+    with pytest.raises(JobCancelledError, match="was cancelled"):
+        generate_carousel.run.__func__(
+            mock_self,
+            openai_api_key="sk-test-key",
+            prompt="Test Prompt",
+            style="minimalista",
+            slide_count=2,
+        )
+
+    mock_redis.set.assert_not_called()
