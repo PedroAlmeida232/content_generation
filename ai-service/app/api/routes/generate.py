@@ -4,6 +4,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import CurrentUser, OpenAIKey, RawToken
+from app.core.metrics import record_generation_outcome
 from app.core.rate_limit import (
     DailyGenerationLimitExceeded,
     check_daily_generation_limit,
@@ -413,6 +414,7 @@ def cancel_job(
         )
 
     cancel_redis_status(job_id)
+    record_generation_outcome(job_id, JobStatus.CANCELLED.value)
 
     if current_status == JobStatus.PROCESSING.value:
         celery_app.control.revoke(

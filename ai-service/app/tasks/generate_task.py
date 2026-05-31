@@ -1,6 +1,7 @@
 import time
 from typing import Any
 
+from app.core.metrics import record_generation_outcome
 from app.core.logging import elapsed_ms, get_logger
 from app.core.redis import is_job_cancelled, save_redis_status
 from app.services.image_prompt_chain import run_image_prompt_chain
@@ -117,6 +118,11 @@ def generate_carousel(
 
         _raise_if_job_cancelled(job_id)
         save_redis_status(job_id, "done", slides=slides_results)
+        record_generation_outcome(
+            job_id,
+            "done",
+            duration_ms=elapsed_ms(started_at),
+        )
         task_logger.info(
             "carousel_generation_completed",
             status="done",
@@ -126,6 +132,7 @@ def generate_carousel(
         return {"slides": slides_results}
 
     except JobCancelledError:
+        record_generation_outcome(job_id, "cancelled")
         task_logger.info(
             "carousel_generation_cancelled",
             status="cancelled",
@@ -134,6 +141,7 @@ def generate_carousel(
         raise
     except Exception as exc:
         if is_job_cancelled(job_id):
+            record_generation_outcome(job_id, "cancelled")
             task_logger.info(
                 "carousel_generation_cancelled",
                 status="cancelled",
@@ -150,4 +158,9 @@ def generate_carousel(
             duration_ms=elapsed_ms(started_at),
         )
         save_redis_status(job_id, "failed", error=error_msg)
+        record_generation_outcome(
+            job_id,
+            "failed",
+            duration_ms=elapsed_ms(started_at),
+        )
         raise

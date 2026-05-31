@@ -42,6 +42,13 @@ def mock_image_prompts() -> CarouselImagePrompts:
     )
 
 
+@pytest.fixture(autouse=True)
+def mock_record_generation_outcome():
+    with patch("app.tasks.generate_task.record_generation_outcome") as mock_record:
+        mock_record.return_value = True
+        yield mock_record
+
+
 def _redis_call(
     status: str,
     progress: int | None = None,
