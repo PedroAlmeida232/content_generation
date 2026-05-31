@@ -78,21 +78,24 @@ def test_generate_carousel_success(
     mock_self,
     mock_slides_text,
     mock_image_prompts,
+    caplog,
 ) -> None:
     mock_run_text.return_value = mock_slides_text
     mock_run_image.return_value = mock_image_prompts
     mock_gen_image.side_effect = ["http://cdn/1.png", "http://cdn/2.png"]
 
-    result = generate_carousel.run.__func__(
-        mock_self,
-        openai_api_key="sk-test-key",
-        prompt="Test Prompt",
-        style="minimalista",
-        slide_count=2,
-        tone="professional",
-        color_palette=["#000000"],
-        context_name="Test Brand",
-    )
+    with caplog.at_level("INFO"):
+        result = generate_carousel.run.__func__(
+            mock_self,
+            openai_api_key="sk-test-key",
+            prompt="Test Prompt",
+            style="minimalista",
+            slide_count=2,
+            tone="professional",
+            color_palette=["#000000"],
+            context_name="Test Brand",
+            user_id="user-123",
+        )
 
     # --- Chain / service calls ---
     mock_run_text.assert_called_once_with(
@@ -162,6 +165,21 @@ def test_generate_carousel_success(
 
     # --- Return value ---
     assert result == {"slides": expected_slides_done}
+
+    log_entries = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "app.tasks.generate_task"
+    ]
+    completed_log = next(
+        entry
+        for entry in log_entries
+        if entry.get("event") == "carousel_generation_completed"
+    )
+    assert completed_log["job_id"] == _JOB_ID
+    assert completed_log["user_id"] == "user-123"
+    assert completed_log["status"] == "done"
+    assert completed_log["duration_ms"] >= 0
 
 
 # ---------------------------------------------------------------------------

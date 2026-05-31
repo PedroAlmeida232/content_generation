@@ -5,7 +5,10 @@ from app.api.routes.health import router as health_router
 from app.api.routes.me import router as me_router
 from app.api.routes.prompts import router as prompts_router
 from app.api.routes.styles import router as styles_router
+from app.core.logging import configure_logging
 from app.core.config import settings
+
+configure_logging()
 
 app = FastAPI(
     title=settings.app_name,

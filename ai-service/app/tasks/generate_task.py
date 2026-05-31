@@ -1,13 +1,14 @@
-import logging
+import time
 from typing import Any
 
+from app.core.logging import elapsed_ms, get_logger
 from app.core.redis import is_job_cancelled, save_redis_status
 from app.services.image_prompt_chain import run_image_prompt_chain
 from app.services.openai_client import generate_slide_image
 from app.services.slide_text_chain import run_slide_text_chain
 from app.tasks.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class JobCancelledError(RuntimeError):
@@ -35,12 +36,20 @@ def generate_carousel(
     tone: str | None = None,
     color_palette: list[str] | None = None,
     context_name: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     job_id = self.request.id
-    logger.info(
-        f"Starting carousel generation job={job_id} "
-        f"aspect_ratio={aspect_ratio} "
-        f"for prompt={prompt[:30]}..."
+    task_logger = logger.bind(
+        job_id=job_id,
+        user_id=user_id,
+        task="generate_carousel",
+    )
+    started_at = time.perf_counter()
+    task_logger.info(
+        "carousel_generation_started",
+        status="processing",
+        aspect_ratio=aspect_ratio,
+        prompt_preview=prompt[:30],
     )
 
     try:
@@ -108,23 +117,37 @@ def generate_carousel(
 
         _raise_if_job_cancelled(job_id)
         save_redis_status(job_id, "done", slides=slides_results)
-        logger.info(
-            f"Carousel generation job={job_id} completed successfully"
+        task_logger.info(
+            "carousel_generation_completed",
+            status="done",
+            slides_count=len(slides_results),
+            duration_ms=elapsed_ms(started_at),
         )
         return {"slides": slides_results}
 
     except JobCancelledError:
-        logger.info(f"Carousel generation job={job_id} was cancelled")
+        task_logger.info(
+            "carousel_generation_cancelled",
+            status="cancelled",
+            duration_ms=elapsed_ms(started_at),
+        )
         raise
     except Exception as exc:
         if is_job_cancelled(job_id):
-            logger.info(f"Carousel generation job={job_id} was cancelled")
+            task_logger.info(
+                "carousel_generation_cancelled",
+                status="cancelled",
+                duration_ms=elapsed_ms(started_at),
+            )
             raise JobCancelledError(
                 f"Job {job_id} was cancelled"
             ) from exc
         error_msg = str(exc)
-        logger.error(
-            f"Carousel generation job={job_id} failed: {error_msg}"
+        task_logger.error(
+            "carousel_generation_failed",
+            status="failed",
+            error=error_msg,
+            duration_ms=elapsed_ms(started_at),
         )
         save_redis_status(job_id, "failed", error=error_msg)
         raise

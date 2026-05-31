@@ -1,3 +1,4 @@
+import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
@@ -7,6 +8,7 @@ from app.core.rate_limit import (
     DailyGenerationLimitExceeded,
     check_daily_generation_limit,
 )
+from app.core.logging import elapsed_ms, get_logger
 from app.core.redis import (
     cancel_redis_status,
     get_redis_status,
@@ -41,6 +43,7 @@ from app.tasks.generate_task import generate_carousel
 
 router = APIRouter(prefix="/generate", tags=["generation"])
 jobs_router = APIRouter(prefix="/jobs", tags=["jobs"])
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +67,8 @@ def generate_slide_image_route(
     openai_key: OpenAIKey,
 ) -> SlideImageResponse:
     """Endpoint sincrono de geracao de imagem por slide."""
+    started_at = time.perf_counter()
+    route_logger = logger.bind(route="POST /generate/slide-image")
     try:
         url = generate_slide_image(
             openai_api_key=openai_key,
@@ -104,6 +109,11 @@ def generate_slide_image_route(
             detail="Failed to generate slide image via DALL-E 3",
         ) from exc
 
+    route_logger.info(
+        "slide_image_generated",
+        status="done",
+        duration_ms=elapsed_ms(started_at),
+    )
     return SlideImageResponse(image_url=url)  # type: ignore[arg-type]
 
 
@@ -130,6 +140,12 @@ async def generate_carousel_route(
     raw_token: RawToken,
 ) -> CarouselResponse:
     """Dispara geracao assincrona de carrossel."""
+    started_at = time.perf_counter()
+    route_logger = logger.bind(
+        user_id=str(current_user.user_id),
+        context_id=str(request.context_id),
+        route="POST /generate/carousel",
+    )
     # 1. Buscar contexto de marca no auth-service
     try:
         context = await fetch_brand_context(
@@ -142,6 +158,12 @@ async def generate_carousel_route(
             detail=str(exc),
         ) from exc
     except AuthClientError as exc:
+        route_logger.warning(
+            "carousel_generation_failed",
+            status="failed",
+            error=f"Failed to reach auth-service: {exc}",
+            duration_ms=elapsed_ms(started_at),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to reach auth-service: {exc}",
@@ -151,6 +173,12 @@ async def generate_carousel_route(
     try:
         check_daily_generation_limit(current_user.user_id)
     except DailyGenerationLimitExceeded as exc:
+        route_logger.warning(
+            "carousel_generation_rejected",
+            status="rejected",
+            error=str(exc),
+            duration_ms=elapsed_ms(started_at),
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
@@ -171,10 +199,17 @@ async def generate_carousel_route(
             "tone": context.get("tone"),
             "color_palette": context.get("colorPalette"),
             "context_name": context.get("name"),
+            "user_id": str(current_user.user_id),
         },
         task_id=job_id,
     )
 
+    route_logger.info(
+        "carousel_generation_enqueued",
+        job_id=job_id,
+        status="pending",
+        duration_ms=elapsed_ms(started_at),
+    )
     return CarouselResponse(job_id=job_id, status="pending")  # type: ignore
 
 
@@ -320,8 +355,20 @@ def get_job_status(
     _current_user: CurrentUser,
 ) -> CarouselResponse:
     """Polling de status do job Celery via Redis."""
+    started_at = time.perf_counter()
+    job_logger = logger.bind(
+        user_id=str(_current_user.user_id),
+        job_id=job_id,
+        route="GET /jobs/{job_id}",
+    )
     payload = _get_job_or_404(job_id)
-    return CarouselResponse.model_validate(payload)
+    response = CarouselResponse.model_validate(payload)
+    job_logger.info(
+        "job_status_retrieved",
+        status=response.status.value,
+        duration_ms=elapsed_ms(started_at),
+    )
+    return response
 
 
 @jobs_router.delete(
@@ -339,16 +386,24 @@ def cancel_job(
     _current_user: CurrentUser,
 ) -> CarouselResponse:
     """Cancela um job em andamento."""
+    started_at = time.perf_counter()
+    job_logger = logger.bind(
+        user_id=str(_current_user.user_id),
+        job_id=job_id,
+        route="DELETE /jobs/{job_id}",
+    )
     payload = _get_job_or_404(job_id)
     current_status = payload.get("status")
-
-    if current_status == JobStatus.CANCELLED.value:
-        return CarouselResponse.model_validate(payload)
 
     if current_status not in (
         JobStatus.PENDING.value,
         JobStatus.PROCESSING.value,
     ):
+        job_logger.warning(
+            "job_cancel_rejected",
+            status=current_status,
+            duration_ms=elapsed_ms(started_at),
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -368,12 +423,18 @@ def cancel_job(
     else:
         celery_app.control.revoke(job_id)
 
-    return CarouselResponse.model_validate(
+    response = CarouselResponse.model_validate(
         {
             "job_id": job_id,
             "status": JobStatus.CANCELLED.value,
         }
     )
+    job_logger.info(
+        "job_cancelled",
+        status=response.status.value,
+        duration_ms=elapsed_ms(started_at),
+    )
+    return response
 
 
 @jobs_router.get(
@@ -390,8 +451,19 @@ def get_job_result(
     _current_user: CurrentUser,
 ) -> CarouselResultResponse:
     """Retorna slides do job concluído ou erro 400."""
+    started_at = time.perf_counter()
+    job_logger = logger.bind(
+        user_id=str(_current_user.user_id),
+        job_id=job_id,
+        route="GET /jobs/{job_id}/result",
+    )
     payload = _get_job_or_404(job_id)
     if payload.get("status") != "done":
+        job_logger.warning(
+            "job_result_rejected",
+            status=payload.get("status"),
+            duration_ms=elapsed_ms(started_at),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -399,4 +471,10 @@ def get_job_result(
                 f"(current status: {payload.get('status')})"
             ),
         )
-    return CarouselResultResponse.model_validate(payload)
+    response = CarouselResultResponse.model_validate(payload)
+    job_logger.info(
+        "job_result_retrieved",
+        status="done",
+        duration_ms=elapsed_ms(started_at),
+    )
+    return response
