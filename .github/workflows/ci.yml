@@ -20,15 +20,18 @@ jobs:
         run: |
           test -f ./frontend/index.html
           test -f ./frontend/pages/login.html
+          test -f ./frontend/pages/projects.html
           test -f ./frontend/css/design-tokens.css
           test -f ./frontend/css/home.css
           test -f ./frontend/css/login.css
+          test -f ./frontend/css/projects.css
           test -f ./nginx/templates/default.conf.template
 
       - name: Validar sintaxe basica do HTML
         run: |
           grep -q "<!DOCTYPE html>" ./frontend/index.html
           grep -q "<!DOCTYPE html>" ./frontend/pages/login.html
+          grep -q "<!DOCTYPE html>" ./frontend/pages/projects.html
 
   # ---------------------------------------------------
   # JOB 2: AUTH-SERVICE (Java)

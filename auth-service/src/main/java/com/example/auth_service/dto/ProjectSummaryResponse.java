@@ -8,6 +8,7 @@ public record ProjectSummaryResponse(
 	String title,
 	String description,
 	String status,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	String firstSlideImageUrl
 ) {
 }

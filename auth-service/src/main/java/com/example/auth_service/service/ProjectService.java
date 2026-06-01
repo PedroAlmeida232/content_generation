@@ -78,7 +78,21 @@ public class ProjectService {
 			: projectRepository.findByUserIdAndStatusIgnoreCase(userId, normalizedStatus, pageable);
 
 		List<ProjectSummaryResponse> content = projects.getContent().stream()
-			.map(projectMapper::toSummaryResponse)
+			.map(project -> {
+				ProjectSummaryResponse base = projectMapper.toSummaryResponse(project);
+				String firstSlideImageUrl = projectSlideRepository
+					.findFirstByProjectIdOrderBySlideOrderAsc(project.getId())
+					.map(ProjectSlide::getImageUrl)
+					.orElse(null);
+				return new ProjectSummaryResponse(
+					base.id(),
+					base.title(),
+					base.description(),
+					base.status(),
+					base.createdAt(),
+					firstSlideImageUrl
+				);
+			})
 			.toList();
 
 		return new ProjectPageResponse(

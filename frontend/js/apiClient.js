@@ -131,3 +131,43 @@ export function getCurrentUser() {
 export function getAiProfile() {
   return aiApi.get("/me");
 }
+
+/**
+ * Projects API helpers (auth-service /projects endpoints).
+ */
+export const projectsApi = {
+  /** List projects with optional status filter and pagination. */
+  list({ page = 0, size = 12, status = null } = {}) {
+    const params = new URLSearchParams({ page, size });
+    if (status) params.set("status", status);
+    return authApi.get(`/projects?${params}`);
+  },
+
+  /** Get a single project with its slides. */
+  get(projectId) {
+    return authApi.get(`/projects/${projectId}`);
+  },
+
+  /** Create a new project. */
+  create(title, description = null, status = "draft") {
+    return request(AUTH_BASE, "/projects", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ title, description, status }),
+    });
+  },
+
+  /** Overwrite all slides for a project. */
+  saveSlides(projectId, slides) {
+    return request(AUTH_BASE, `/projects/${projectId}/slides`, {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ slides }),
+    });
+  },
+
+  /** Delete a project by id. */
+  delete(projectId) {
+    return authApi.delete(`/projects/${projectId}`);
+  },
+};

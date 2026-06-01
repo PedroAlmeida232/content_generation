@@ -12,6 +12,7 @@ import com.example.auth_service.dto.ProjectSummaryResponse;
 public interface ProjectMapper {
 
 	@Mapping(source = "name", target = "title")
+	@Mapping(target = "firstSlideImageUrl", ignore = true)
 	ProjectSummaryResponse toSummaryResponse(Project project);
 
 	@Mapping(source = "slideOrder", target = "slideOrder")
