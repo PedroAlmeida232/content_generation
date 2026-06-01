@@ -165,6 +165,39 @@ export function getAiProfile() {
 }
 
 /**
+ * Brand contexts API helpers (auth-service /contexts endpoints).
+ */
+export const contextsApi = {
+  list() {
+    return authApi.get("/contexts");
+  },
+
+  get(contextId) {
+    return authApi.get(`/contexts/${contextId}`);
+  },
+
+  create(contextKey, contextValue = null) {
+    return request(AUTH_BASE, "/contexts", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ contextKey, contextValue }),
+    });
+  },
+
+  update(contextId, contextKey, contextValue = null) {
+    return request(AUTH_BASE, `/contexts/${contextId}`, {
+      method: "PUT",
+      auth: true,
+      body: JSON.stringify({ contextKey, contextValue }),
+    });
+  },
+
+  delete(contextId) {
+    return authApi.delete(`/contexts/${contextId}`);
+  },
+};
+
+/**
  * Projects API helpers (auth-service /projects endpoints).
  */
 export const projectsApi = {

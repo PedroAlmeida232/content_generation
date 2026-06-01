@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Generation | Contexto de Marca</title>
+    <meta
+      name="description"
+      content="Configure paleta de cores, logo e tom de voz da sua marca para usar nos fluxos de geração."
+    />
+    <link rel="stylesheet" href="../css/design-tokens.css" />
+    <link rel="stylesheet" href="../css/brand-context.css" />
+  </head>
+  <body class="brand-context-body">
+    <div class="brand-context-shell">
+      <header class="brand-context-header">
+        <a class="brand-context-brand" href="/" aria-label="Content Generation home">
+          <span class="brand-context-brand-mark">CG</span>
+          <span>Content Generation</span>
+        </a>
+
+        <nav class="brand-context-nav" aria-label="Navegação principal">
+          <a href="/pages/dashboard.html">Dashboard</a>
+          <a href="/pages/projects.html">Projetos</a>
+          <a href="/pages/editor.html">Editor</a>
+          <a class="is-active" href="/pages/brand-context.html" aria-current="page">Marca</a>
+        </nav>
+
+        <div class="brand-context-session">
+          <p class="brand-context-session-copy">
+            Sessão ativa para <strong id="brand-context-user-email">criador@workspace</strong>
+          </p>
+          <button id="brand-context-logout" class="brand-context-logout" type="button">Sair</button>
+        </div>
+      </header>
+
+      <main class="brand-context-main">
+        <section class="brand-context-hero">
+          <div class="brand-context-hero-copy">
+            <p class="brand-context-eyebrow">Configuração de marca</p>
+            <h1>Centralize paleta, logo e tom para manter consistência em cada geração.</h1>
+            <p class="brand-context-lead">
+              Esta tela organiza as informações que alimentam o editor e os prompts do workspace.
+              Atualize os dados uma vez e reutilize em todos os carrosséis.
+            </p>
+
+            <div class="brand-context-hero-actions">
+              <a class="brand-context-primary-action" href="/pages/editor.html">Ir para o editor</a>
+              <a class="brand-context-secondary-action" href="/pages/projects.html">Ver projetos</a>
+            </div>
+          </div>
+
+          <aside class="brand-context-preview" aria-label="Prévia da marca">
+            <div class="brand-context-preview-top">
+              <span class="brand-context-preview-badge">Preview</span>
+              <strong id="brand-context-preview-name">Sua marca</strong>
+            </div>
+            <div class="brand-context-preview-logo" id="brand-context-preview-logo">
+              <span>Logo</span>
+            </div>
+            <div class="brand-context-preview-palette" id="brand-context-preview-palette"></div>
+            <p class="brand-context-preview-tone" id="brand-context-preview-tone">
+              Defina um tom para visualizar o estilo de comunicação.
+            </p>
+          </aside>
+        </section>
+
+        <section class="brand-context-panel" aria-labelledby="brand-context-form-title">
+          <div class="brand-context-section-heading">
+            <p class="brand-context-section-kicker">Campos da marca</p>
+            <h2 id="brand-context-form-title">Editar identidade visual e editorial</h2>
+          </div>
+
+          <p id="brand-context-feedback" class="brand-context-feedback" aria-live="polite" hidden></p>
+
+          <form id="brand-context-form" class="brand-context-form" novalidate>
+            <div class="brand-context-field">
+              <label for="brand-name">Nome da marca</label>
+              <input
+                id="brand-name"
+                name="brand_name"
+                type="text"
+                maxlength="100"
+                placeholder="Ex: Content Generation"
+                required
+              />
+              <p class="brand-context-field-hint">Nome usado na apresentação visual e em resumos internos.</p>
+            </div>
+
+            <div class="brand-context-field">
+              <label for="logo-url">Logo</label>
+              <input
+                id="logo-url"
+                name="logo_url"
+                type="url"
+                placeholder="https://cdn.example/logo.svg"
+                autocomplete="off"
+              />
+              <p class="brand-context-field-hint">Informe uma URL pública para exibir o logo no preview.</p>
+            </div>
+
+            <div class="brand-context-field brand-context-field--full">
+              <label for="color-palette">Paleta de cores</label>
+              <textarea
+                id="color-palette"
+                name="color_palette"
+                rows="3"
+                placeholder="#14213d, #fca311, #e5e5e5"
+              ></textarea>
+              <p class="brand-context-field-hint">
+                Separe as cores por vírgula ou quebre linhas. Priorize códigos hexadecimais.
+              </p>
+            </div>
+
+            <div class="brand-context-field brand-context-field--full">
+              <label for="tone">Tom de voz</label>
+              <textarea
+                id="tone"
+                name="tone"
+                rows="4"
+                placeholder="Ex: profissional, claro, consultivo e acolhedor."
+              ></textarea>
+              <p class="brand-context-field-hint">
+                Esse texto pode orientar a redação dos briefings e do conteúdo gerado.
+              </p>
+            </div>
+
+            <div class="brand-context-actions">
+              <button id="brand-context-save" class="brand-context-save" type="submit">
+                Salvar contexto
+              </button>
+              <button id="brand-context-reset" class="brand-context-reset" type="button">
+                Recarregar
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="brand-context-list-panel" aria-labelledby="brand-context-list-title">
+          <div class="brand-context-section-heading">
+            <p class="brand-context-section-kicker">Contextos salvos</p>
+            <h2 id="brand-context-list-title">Chaves persistidas no auth-service</h2>
+          </div>
+
+          <div id="brand-context-list" class="brand-context-list" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="../js/brand-context-page.js"></script>
+  </body>
+</html>
