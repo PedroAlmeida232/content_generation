@@ -204,6 +204,12 @@ body.project-detail-body {
   background: rgba(20, 33, 61, 0.05);
 }
 
+.project-detail-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .project-detail-btn--primary {
   border-color: transparent;
   color: var(--color-surface);
@@ -343,6 +349,18 @@ body.project-detail-body {
   display: grid;
   gap: var(--space-100);
   padding: 0 var(--space-200) var(--space-200);
+}
+
+.project-slide-actions {
+  display: flex;
+  gap: var(--space-100);
+  flex-wrap: wrap;
+  padding: 0 var(--space-200) var(--space-200);
+}
+
+.project-slide-actions .project-detail-btn {
+  padding: 0.7rem 0.95rem;
+  font-size: var(--font-size-100);
 }
 
 .project-slide-title {

@@ -4,7 +4,9 @@ import java.util.UUID;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth_service.dto.CreateProjectRequest;
+import com.example.auth_service.dto.ProjectDownloadFileResponse;
 import com.example.auth_service.dto.ProjectDetailResponse;
 import com.example.auth_service.dto.ProjectPageResponse;
 import com.example.auth_service.dto.SaveProjectSlidesRequest;
@@ -61,6 +64,36 @@ public class ProjectController {
 		return projectService.getProject(principal.userId(), id);
 	}
 
+	@GetMapping("/{id}/slides/{slideId}/download")
+	public ResponseEntity<byte[]> downloadProjectSlide(
+		Authentication authentication,
+		@PathVariable UUID id,
+		@PathVariable UUID slideId
+	) {
+		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+		ProjectDownloadFileResponse file = projectService.downloadProjectSlide(principal.userId(), id, slideId);
+		return ResponseEntity.ok()
+			.contentType(resolveMediaType(file.contentType()))
+			.header(
+				"Content-Disposition",
+				ContentDisposition.attachment().filename(file.filename()).build().toString()
+			)
+			.body(file.content());
+	}
+
+	@GetMapping("/{id}/download")
+	public ResponseEntity<byte[]> downloadProjectZip(Authentication authentication, @PathVariable UUID id) {
+		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+		ProjectDownloadFileResponse file = projectService.downloadProjectZip(principal.userId(), id);
+		return ResponseEntity.ok()
+			.contentType(resolveMediaType(file.contentType()))
+			.header(
+				"Content-Disposition",
+				ContentDisposition.attachment().filename(file.filename()).build().toString()
+			)
+			.body(file.content());
+	}
+
 	@PostMapping("/{id}/slides")
 	public ProjectDetailResponse saveProjectSlides(
 		Authentication authentication,
@@ -76,6 +109,18 @@ public class ProjectController {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
 		projectService.deleteProject(principal.userId(), id);
 		return ResponseEntity.noContent().build();
+	}
+
+	private MediaType resolveMediaType(String contentType) {
+		if (contentType == null || contentType.isBlank()) {
+			return MediaType.APPLICATION_OCTET_STREAM;
+		}
+
+		try {
+			return MediaType.parseMediaType(contentType);
+		} catch (IllegalArgumentException ex) {
+			return MediaType.APPLICATION_OCTET_STREAM;
+		}
 	}
 
 }

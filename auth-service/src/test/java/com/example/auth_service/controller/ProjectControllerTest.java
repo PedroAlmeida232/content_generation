@@ -3,6 +3,8 @@ package com.example.auth_service.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -10,13 +12,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -342,6 +349,130 @@ class ProjectControllerTest {
 			.header("Authorization", "Bearer " + token))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.message").value("Project not found with id: " + projectId));
+	}
+
+	@Test
+	void downloadProjectSlideReturnsOwnedImageFile() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		UUID slideId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		Path tempImage = Files.createTempFile("project-slide-", ".png");
+		byte[] imageBytes = new byte[] { 1, 2, 3, 4, 5 };
+		Files.write(tempImage, imageBytes);
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "Project to download", "Description", "done");
+		project.setId(projectId);
+
+		ProjectSlide slide = slide(project, 1, tempImage.toUri().toString(), "Slide 1", "Prompt 1");
+		slide.setId(slideId);
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+		when(projectSlideRepository.findByIdAndProjectId(slideId, projectId)).thenReturn(Optional.of(slide));
+
+		byte[] responseBytes = mockMvc.perform(get("/projects/" + projectId + "/slides/" + slideId + "/download")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
+			.andReturn()
+			.getResponse()
+			.getContentAsByteArray();
+
+		assertArrayEquals(imageBytes, responseBytes);
+	}
+
+	@Test
+	void downloadProjectZipReturnsArchiveWithMetadataAndSlides() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		Path slideOneFile = Files.createTempFile("slide-one-", ".png");
+		Path slideTwoFile = Files.createTempFile("slide-two-", ".jpg");
+		byte[] slideOneBytes = new byte[] { 10, 20, 30 };
+		byte[] slideTwoBytes = new byte[] { 40, 50, 60, 70 };
+		Files.write(slideOneFile, slideOneBytes);
+		Files.write(slideTwoFile, slideTwoBytes);
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "ZIP Project", "Project description", "done");
+		project.setId(projectId);
+
+		ProjectSlide slideOne = slide(project, 1, slideOneFile.toUri().toString(), "Caption 1", "Prompt 1");
+		slideOne.setId(UUID.randomUUID());
+		ProjectSlide slideTwo = slide(project, 2, slideTwoFile.toUri().toString(), "Caption 2", "Prompt 2");
+		slideTwo.setId(UUID.randomUUID());
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+		when(projectSlideRepository.findByProjectIdOrderBySlideOrderAsc(projectId))
+			.thenReturn(List.of(slideOne, slideTwo));
+
+		byte[] responseBytes = mockMvc.perform(get("/projects/" + projectId + "/download")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.parseMediaType("application/zip")))
+			.andReturn()
+			.getResponse()
+			.getContentAsByteArray();
+
+		boolean foundMetadata = false;
+		boolean foundSlideOne = false;
+		boolean foundSlideTwo = false;
+
+		try (ZipInputStream zip = new ZipInputStream(new java.io.ByteArrayInputStream(responseBytes))) {
+			ZipEntry entry;
+			while ((entry = zip.getNextEntry()) != null) {
+				byte[] data = zip.readAllBytes();
+				if (entry.getName().endsWith("project-info.txt")) {
+					foundMetadata = new String(data).contains("ZIP Project");
+				}
+				if (entry.getName().endsWith("slide-01.png")) {
+					foundSlideOne = java.util.Arrays.equals(slideOneBytes, data);
+				}
+				if (entry.getName().endsWith("slide-02.jpg")) {
+					foundSlideTwo = java.util.Arrays.equals(slideTwoBytes, data);
+				}
+			}
+		}
+
+		assertTrue(foundMetadata);
+		assertTrue(foundSlideOne);
+		assertTrue(foundSlideTwo);
+	}
+
+	@Test
+	void downloadProjectSlideReturnsNotFoundForAnotherProjectsSlide() throws Exception {
+		UUID userId = UUID.randomUUID();
+		UUID projectId = UUID.randomUUID();
+		UUID otherProjectId = UUID.randomUUID();
+		UUID slideId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project project = project(user, "Project", "Description", "done");
+		project.setId(projectId);
+
+		Project otherProject = project(user, "Other Project", "Description", "done");
+		otherProject.setId(otherProjectId);
+
+		ProjectSlide slide = slide(otherProject, 1, "https://cdn.example/1.png", "Slide 1", "Prompt 1");
+		slide.setId(slideId);
+
+		when(projectRepository.findByIdAndUserId(projectId, userId)).thenReturn(Optional.of(project));
+		when(projectSlideRepository.findByIdAndProjectId(slideId, projectId)).thenReturn(Optional.empty());
+
+		mockMvc.perform(get("/projects/" + projectId + "/slides/" + slideId + "/download")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.message").value("Slide not found with id: " + slideId));
 	}
 
 	@Test

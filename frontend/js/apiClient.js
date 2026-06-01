@@ -29,6 +29,24 @@ async function parseApiResponse(response) {
   return body;
 }
 
+async function parseBinaryResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  if (!response.ok) {
+    const body = isJson ? await response.json().catch(() => null) : null;
+    const message = body?.message || `Request failed with status ${response.status}`;
+    throw new ApiError(message, { status: response.status, body });
+  }
+
+  const blob = await response.blob();
+  return {
+    blob,
+    contentType,
+    headers: response.headers,
+  };
+}
+
 function buildHeaders(options) {
   const { auth = true, openaiKey = false, headers = {}, body } = options;
   const finalHeaders = new Headers({
@@ -78,6 +96,20 @@ export async function request(baseUrl, path, options = {}) {
   });
 
   return parseApiResponse(response);
+}
+
+export async function requestBlob(baseUrl, path, options = {}) {
+  const { auth = true, openaiKey = false, headers, body, ...init } = options;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const finalHeaders = buildHeaders({ auth, openaiKey, headers, body });
+
+  const response = await fetch(`${baseUrl}${normalizedPath}`, {
+    ...init,
+    headers: finalHeaders,
+    body,
+  });
+
+  return parseBinaryResponse(response);
 }
 
 function createClient(baseUrl, defaultAuth) {
@@ -147,6 +179,22 @@ export const projectsApi = {
   /** Get a single project with its slides. */
   get(projectId) {
     return authApi.get(`/projects/${projectId}`);
+  },
+
+  /** Download a single slide as a file. */
+  downloadSlide(projectId, slideId) {
+    return requestBlob(AUTH_BASE, `/projects/${projectId}/slides/${slideId}/download`, {
+      method: "GET",
+      auth: true,
+    });
+  },
+
+  /** Download the complete project as a ZIP archive. */
+  downloadZip(projectId) {
+    return requestBlob(AUTH_BASE, `/projects/${projectId}/download`, {
+      method: "GET",
+      auth: true,
+    });
   },
 
   /** Create a new project. */
