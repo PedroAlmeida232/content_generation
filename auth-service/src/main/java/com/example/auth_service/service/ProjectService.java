@@ -1,9 +1,18 @@
 package com.example.auth_service.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -18,6 +27,7 @@ import com.example.auth_service.domain.ProjectSlide;
 import com.example.auth_service.domain.User;
 import com.example.auth_service.dto.CreateProjectRequest;
 import com.example.auth_service.dto.ProjectDetailResponse;
+import com.example.auth_service.dto.ProjectDownloadFileResponse;
 import com.example.auth_service.dto.ProjectPageResponse;
 import com.example.auth_service.dto.ProjectSlideResponse;
 import com.example.auth_service.dto.ProjectSummaryResponse;
@@ -130,6 +140,38 @@ public class ProjectService {
 
 		List<ProjectSlide> slides = projectSlideRepository.findByProjectIdOrderBySlideOrderAsc(projectId);
 		return toDetailResponse(project, slides);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectDownloadFileResponse downloadProjectSlide(UUID userId, UUID projectId, UUID slideId) {
+		Project project = projectRepository.findByIdAndUserId(projectId, userId)
+			.orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+
+		ProjectSlide slide = projectSlideRepository.findByIdAndProjectId(slideId, projectId)
+			.orElseThrow(() -> new ProjectNotFoundException("Slide not found with id: " + slideId));
+
+		DownloadedAsset asset = downloadAsset(
+			slide.getImageUrl(),
+			buildSlideBaseName(project.getName(), slide.getSlideOrder())
+		);
+
+		return new ProjectDownloadFileResponse(
+			asset.content(),
+			asset.contentType(),
+			asset.filename()
+		);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectDownloadFileResponse downloadProjectZip(UUID userId, UUID projectId) {
+		Project project = projectRepository.findByIdAndUserId(projectId, userId)
+			.orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + projectId));
+
+		List<ProjectSlide> slides = projectSlideRepository.findByProjectIdOrderBySlideOrderAsc(projectId);
+
+		byte[] zipBytes = buildProjectZip(project, slides);
+		String filename = buildProjectBaseName(project.getName()) + ".zip";
+		return new ProjectDownloadFileResponse(zipBytes, "application/zip", filename);
 	}
 
 	@Transactional
@@ -270,6 +312,129 @@ public class ProjectService {
 		entity.setCaption(slide.caption().trim());
 		entity.setPromptUsed(slide.promptUsed().trim());
 		return entity;
+	}
+
+	private byte[] buildProjectZip(Project project, List<ProjectSlide> slides) {
+		try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+			ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+			String projectFolder = buildProjectBaseName(project.getName());
+
+			String metadata = buildProjectMetadata(project, slides);
+			addZipEntry(zip, projectFolder + "/project-info.txt", metadata.getBytes(StandardCharsets.UTF_8));
+
+			for (ProjectSlide slide : slides) {
+				DownloadedAsset asset = downloadAsset(
+					slide.getImageUrl(),
+					buildSlideBaseName(project.getName(), slide.getSlideOrder())
+				);
+				String entryName = projectFolder + "/" + asset.filename();
+				addZipEntry(zip, entryName, asset.content());
+			}
+
+			zip.finish();
+			return output.toByteArray();
+		} catch (IOException e) {
+			throw new IllegalStateException("Failed to build project ZIP", e);
+		}
+	}
+
+	private void addZipEntry(ZipOutputStream zip, String entryName, byte[] content) throws IOException {
+		ZipEntry entry = new ZipEntry(entryName);
+		zip.putNextEntry(entry);
+		zip.write(content);
+		zip.closeEntry();
+	}
+
+	private String buildProjectMetadata(Project project, List<ProjectSlide> slides) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Projeto: ").append(project.getName()).append('\n');
+		builder.append("Status: ").append(project.getStatus()).append('\n');
+		builder.append("Criado em: ").append(project.getCreatedAt()).append('\n');
+		builder.append("Descricao: ").append(safeText(project.getDescription())).append('\n');
+		builder.append("Slides: ").append(slides.size()).append('\n');
+		builder.append('\n');
+		for (ProjectSlide slide : slides) {
+			builder.append("Slide ").append(slide.getSlideOrder()).append('\n');
+			builder.append("Caption: ").append(safeText(slide.getCaption())).append('\n');
+			builder.append("Prompt: ").append(safeText(slide.getPromptUsed())).append('\n');
+			builder.append("Image URL: ").append(safeText(slide.getImageUrl())).append('\n');
+			builder.append('\n');
+		}
+		return builder.toString();
+	}
+
+	private DownloadedAsset downloadAsset(String sourceUrl, String fallbackBaseName) {
+		if (sourceUrl == null || sourceUrl.trim().isEmpty()) {
+			throw new IllegalStateException("Slide image URL is missing");
+		}
+
+		try {
+			URL url = new URL(sourceUrl);
+			URLConnection connection = url.openConnection();
+			connection.setConnectTimeout(10000);
+			connection.setReadTimeout(15000);
+
+			byte[] content;
+			try (InputStream inputStream = connection.getInputStream()) {
+				content = inputStream.readAllBytes();
+			}
+
+			String contentType = connection.getContentType();
+			String extension = resolveFileExtension(sourceUrl, contentType);
+			return new DownloadedAsset(
+				content,
+				contentType == null || contentType.isBlank() ? "application/octet-stream" : contentType,
+				fallbackBaseName + extension
+			);
+		} catch (IOException e) {
+			throw new IllegalStateException("Failed to download slide asset from " + sourceUrl, e);
+		}
+	}
+
+	private String resolveFileExtension(String sourceUrl, String contentType) {
+		String normalizedContentType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
+		if (normalizedContentType.contains("png")) return ".png";
+		if (normalizedContentType.contains("jpeg") || normalizedContentType.contains("jpg")) return ".jpg";
+		if (normalizedContentType.contains("webp")) return ".webp";
+		if (normalizedContentType.contains("gif")) return ".gif";
+
+		try {
+			String path = new URL(sourceUrl).getPath();
+			int lastSlash = path.lastIndexOf('/');
+			String fileName = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+			int dotIndex = fileName.lastIndexOf('.');
+			if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
+				return fileName.substring(dotIndex);
+			}
+		} catch (IOException ignored) {
+			// Fall through to the default extension below.
+		}
+
+		return ".bin";
+	}
+
+	private String buildSlideBaseName(String projectName, int slideOrder) {
+		return buildProjectBaseName(projectName) + "-slide-" + String.format("%02d", slideOrder);
+	}
+
+	private String buildProjectBaseName(String value) {
+		if (value == null || value.trim().isEmpty()) {
+			return "project";
+		}
+
+		String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+			.replaceAll("\\p{M}+", "")
+			.toLowerCase(Locale.ROOT)
+			.replaceAll("[^a-z0-9]+", "-")
+			.replaceAll("^-+|-+$", "");
+		return normalized.isBlank() ? "project" : normalized;
+	}
+
+	private String safeText(String value) {
+		return value == null ? "" : value;
+	}
+
+	private record DownloadedAsset(byte[] content, String contentType, String filename) {
 	}
 
 }

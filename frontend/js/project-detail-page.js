@@ -14,9 +14,13 @@ const slidesSummaryEl = document.getElementById("project-slides-summary");
 const slidesGridEl = document.getElementById("project-slides-grid");
 const previewFrameEl = document.getElementById("project-preview-frame");
 const openEditorBtn = document.getElementById("open-editor-btn");
+const downloadZipBtn = document.getElementById("download-zip-btn");
 const toastEl = document.getElementById("project-detail-toast");
 
 let toastTimer = null;
+let currentProject = null;
+let isDownloadingZip = false;
+const downloadingSlideIds = new Set();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -25,6 +29,109 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function slugify(value) {
+  return String(value ?? "project")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "project";
+}
+
+function getFilenameFromHeaders(headers, fallbackFilename) {
+  const contentDisposition = headers?.get("content-disposition") || "";
+  const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (filenameStarMatch?.[1]) {
+    try {
+      return decodeURIComponent(filenameStarMatch[1]);
+    } catch {
+      return filenameStarMatch[1];
+    }
+  }
+
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  if (filenameMatch?.[1]) {
+    return filenameMatch[1];
+  }
+
+  return fallbackFilename;
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function setZipButtonState(state = "idle") {
+  if (!downloadZipBtn) return;
+  if (state === "loading") {
+    downloadZipBtn.disabled = true;
+    downloadZipBtn.textContent = "Baixando ZIP…";
+    return;
+  }
+
+  downloadZipBtn.disabled = state === "disabled";
+  downloadZipBtn.textContent = "Baixar ZIP";
+}
+
+function setSlideDownloadState(slideId, isLoading) {
+  const button = document.querySelector(`[data-download-slide-id="${slideId}"]`);
+  if (!button) return;
+  button.disabled = isLoading;
+  button.textContent = isLoading ? "Baixando…" : "Baixar slide";
+}
+
+async function handleDownloadSlide(slideId) {
+  const projectId = getProjectId();
+  if (!projectId || !slideId || downloadingSlideIds.has(slideId)) return;
+
+  downloadingSlideIds.add(slideId);
+  setSlideDownloadState(slideId, true);
+
+  try {
+    const result = await projectsApi.downloadSlide(projectId, slideId);
+    const projectBase = slugify(currentProject?.title || "project");
+    const fallbackName = `${projectBase}-slide-${slideId}.bin`;
+    const filename = getFilenameFromHeaders(result.headers, fallbackName);
+    triggerDownload(result.blob, filename);
+    showToast("Download do slide iniciado.");
+  } catch (err) {
+    const message = err instanceof ApiError ? err.message : "Não foi possível baixar o slide.";
+    showToast(message);
+  } finally {
+    downloadingSlideIds.delete(slideId);
+    setSlideDownloadState(slideId, false);
+  }
+}
+
+async function handleDownloadZip() {
+  const projectId = getProjectId();
+  if (!projectId || isDownloadingZip) return;
+
+  isDownloadingZip = true;
+  setZipButtonState("loading");
+
+  try {
+    const result = await projectsApi.downloadZip(projectId);
+    const fallbackName = `${slugify(currentProject?.title || "project")}.zip`;
+    const filename = getFilenameFromHeaders(result.headers, fallbackName);
+    triggerDownload(result.blob, filename);
+    showToast("Download do ZIP iniciado.");
+  } catch (err) {
+    const message = err instanceof ApiError ? err.message : "Não foi possível baixar o ZIP.";
+    showToast(message);
+  } finally {
+    isDownloadingZip = false;
+    setZipButtonState(currentProject?.slides?.length ? "idle" : "disabled");
+  }
 }
 
 function getProjectId() {
@@ -80,6 +187,7 @@ function renderLoadingState() {
   if (titleEl) titleEl.textContent = "Carregando projeto…";
   if (descriptionEl) descriptionEl.textContent = "Buscando informações do projeto e seus slides.";
   if (metaEl) metaEl.hidden = true;
+  setZipButtonState("disabled");
   if (slidesGridEl) {
     slidesGridEl.innerHTML = `
       <div class="project-detail-loading">
@@ -144,6 +252,15 @@ function renderSlideCard(slide) {
         <p class="project-slide-prompt"><strong>Prompt:</strong> ${escapeHtml(slide.promptUsed || "Não informado")}</p>
         <p class="project-slide-meta">${escapeHtml(formatDateTime(slide.generatedAt))}</p>
       </div>
+      <div class="project-slide-actions">
+        <button
+          type="button"
+          class="project-detail-btn project-detail-btn--primary"
+          data-download-slide-id="${slide.id}"
+        >
+          Baixar slide
+        </button>
+      </div>
     </article>
   `;
 }
@@ -160,6 +277,7 @@ function setPreviewImage(imageUrl, title) {
 async function loadProject() {
   const projectId = getProjectId();
   renderLoadingState();
+  currentProject = null;
 
   if (!projectId) {
     if (titleEl) titleEl.textContent = "Projeto não encontrado";
@@ -178,6 +296,7 @@ async function loadProject() {
 
   try {
     const project = await projectsApi.get(projectId);
+    currentProject = project;
     const slides = project?.slides ?? [];
 
     if (titleEl) titleEl.textContent = project?.title || "Projeto sem título";
@@ -208,6 +327,7 @@ async function loadProject() {
 
     const firstImage = slides[0]?.imageUrl ?? project?.firstSlideImageUrl ?? null;
     setPreviewImage(firstImage, project?.title || "projeto");
+    setZipButtonState(slides.length === 0 ? "disabled" : "idle");
 
     if (slides.length === 0) {
       renderEmptySlidesState();
@@ -216,6 +336,9 @@ async function loadProject() {
 
     if (slidesGridEl) {
       slidesGridEl.innerHTML = slides.map(renderSlideCard).join("");
+      slidesGridEl.querySelectorAll("[data-download-slide-id]").forEach((button) => {
+        button.addEventListener("click", () => handleDownloadSlide(button.dataset.downloadSlideId));
+      });
     }
   } catch (err) {
     let title = "Erro ao carregar projeto";
@@ -237,6 +360,7 @@ async function loadProject() {
     if (titleEl) titleEl.textContent = "Não foi possível carregar o projeto";
     if (descriptionEl) descriptionEl.textContent = message;
     if (metaEl) metaEl.hidden = true;
+    setZipButtonState("disabled");
     renderErrorState(title, message, loadProject);
   }
 }
@@ -253,6 +377,8 @@ if (session) {
       nav.appendChild(emailTag);
     }
   }
+
+  downloadZipBtn?.addEventListener("click", handleDownloadZip);
 
   loadProject();
 
