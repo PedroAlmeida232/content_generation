@@ -16,6 +16,7 @@ import {
   redirectToLogin,
 } from "./auth-session.js";
 import { projectsApi, ApiError } from "./apiClient.js";
+import { renderProjectListSkeleton, setBusyState } from "./loading-states.js";
 
 const PAGE_SIZE = 12;
 
@@ -93,20 +94,8 @@ function showToast(message, type = "success") {
 }
 
 function renderSkeletons(count = 6) {
-  grid.setAttribute("aria-busy", "true");
-  grid.innerHTML = Array.from({ length: count })
-    .map(
-      () => `
-    <div class="project-card-skeleton" role="listitem" aria-label="Carregando projeto">
-      <div class="skeleton-thumb"></div>
-      <div class="skeleton-body">
-        <div class="skeleton-line"></div>
-        <div class="skeleton-line skeleton-line--short"></div>
-        <div class="skeleton-line skeleton-line--badge"></div>
-      </div>
-    </div>`
-    )
-    .join("");
+  setBusyState(grid, true);
+  grid.innerHTML = renderProjectListSkeleton(count);
 }
 
 function renderCard(project) {
@@ -219,7 +208,7 @@ async function loadProjects() {
     });
 
     const projects = data?.content ?? [];
-    grid.setAttribute("aria-busy", "false");
+    setBusyState(grid, false);
 
     if (projects.length === 0) {
       grid.innerHTML = renderEmptyState();
@@ -237,7 +226,7 @@ async function loadProjects() {
       });
     });
   } catch (err) {
-    grid.setAttribute("aria-busy", "false");
+    setBusyState(grid, false);
     let message = "Ocorreu um erro inesperado.";
     if (err instanceof ApiError) {
       if (err.status === 401) {
