@@ -137,9 +137,10 @@ export function getAiProfile() {
  */
 export const projectsApi = {
   /** List projects with optional status filter and pagination. */
-  list({ page = 0, size = 12, status = null } = {}) {
+  list({ page = 0, size = 12, status = null, search = null } = {}) {
     const params = new URLSearchParams({ page, size });
     if (status) params.set("status", status);
+    if (search) params.set("q", search);
     return authApi.get(`/projects?${params}`);
   },
 

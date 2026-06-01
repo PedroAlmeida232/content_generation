@@ -2,6 +2,7 @@ package com.example.auth_service.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -101,7 +102,7 @@ class ProjectControllerTest {
 		second.setId(UUID.randomUUID());
 		second.setCreatedAt(LocalDateTime.of(2026, 5, 29, 11, 0));
 
-		when(projectRepository.findByUserId(eq(userId), any(Pageable.class)))
+		when(projectRepository.findByUserIdAndStatusAndSearch(eq(userId), isNull(), isNull(), any(Pageable.class)))
 			.thenReturn(new PageImpl<>(
 				List.of(second, first),
 				PageRequest.of(0, 10),
@@ -134,7 +135,7 @@ class ProjectControllerTest {
 		doneProject.setId(UUID.randomUUID());
 		doneProject.setCreatedAt(LocalDateTime.of(2026, 5, 29, 11, 0));
 
-		when(projectRepository.findByUserIdAndStatusIgnoreCase(eq(userId), eq("done"), any(Pageable.class)))
+		when(projectRepository.findByUserIdAndStatusAndSearch(eq(userId), eq("done"), isNull(), any(Pageable.class)))
 			.thenReturn(new PageImpl<>(
 				List.of(doneProject),
 				PageRequest.of(0, 10),
@@ -148,6 +149,69 @@ class ProjectControllerTest {
 			.andExpect(jsonPath("$.content.length()").value(1))
 			.andExpect(jsonPath("$.content[0].title").value("Done project"))
 			.andExpect(jsonPath("$.content[0].status").value("done"));
+	}
+
+	@Test
+	void listProjectsSearchesByTextWhenProvided() throws Exception {
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project matchingProject = project(user, "Launch campaign", "Landing page and email sequence", "draft");
+		matchingProject.setId(UUID.randomUUID());
+		matchingProject.setCreatedAt(LocalDateTime.of(2026, 5, 29, 12, 30));
+
+		when(projectRepository.findByUserIdAndStatusAndSearch(
+			eq(userId),
+			isNull(),
+			eq("launch"),
+			any(Pageable.class)
+		)).thenReturn(new PageImpl<>(
+			List.of(matchingProject),
+			PageRequest.of(0, 10),
+			1
+		));
+
+		mockMvc.perform(get("/projects?q=launch&page=0&size=10")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.content.length()").value(1))
+			.andExpect(jsonPath("$.content[0].title").value("Launch campaign"));
+	}
+
+	@Test
+	void listProjectsCombinesSearchAndStatusFilters() throws Exception {
+		UUID userId = UUID.randomUUID();
+		String token = jwtService.generateToken(userId, "user@example.com");
+
+		User user = new User();
+		user.setId(userId);
+
+		Project matchingProject = project(user, "Launch campaign", "Landing page and email sequence", "done");
+		matchingProject.setId(UUID.randomUUID());
+		matchingProject.setCreatedAt(LocalDateTime.of(2026, 5, 29, 12, 30));
+
+		when(projectRepository.findByUserIdAndStatusAndSearch(
+			eq(userId),
+			eq("done"),
+			eq("launch"),
+			any(Pageable.class)
+		)).thenReturn(new PageImpl<>(
+			List.of(matchingProject),
+			PageRequest.of(0, 10),
+			1
+		));
+
+		mockMvc.perform(get("/projects?status=done&q=launch&page=0&size=10")
+			.header("Authorization", "Bearer " + token))
+			.andExpect(status().isOk())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.content.length()").value(1))
+			.andExpect(jsonPath("$.content[0].status").value("done"))
+			.andExpect(jsonPath("$.content[0].title").value("Launch campaign"));
 	}
 
 	@Test

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Generation | Detalhe do Projeto</title>
+    <meta
+      name="description"
+      content="Veja o detalhe completo do projeto, com todos os slides, captions e prompts visuais."
+    />
+    <link rel="stylesheet" href="../css/design-tokens.css" />
+    <link rel="stylesheet" href="../css/project-detail.css" />
+  </head>
+  <body class="project-detail-body">
+    <div class="project-detail-shell">
+      <header class="project-detail-header">
+        <a class="project-detail-brand" href="/" aria-label="Content Generation home">
+          <span class="project-detail-brand-mark">CG</span>
+          <span>Content Generation</span>
+        </a>
+
+        <nav class="project-detail-nav" aria-label="Navegação secundária">
+          <a href="/pages/dashboard.html">Dashboard</a>
+          <a href="/pages/projects.html">Projetos</a>
+          <span class="is-active" aria-current="page">Detalhe</span>
+        </nav>
+
+        <a class="project-detail-back" href="/pages/projects.html">← Voltar aos projetos</a>
+      </header>
+
+      <main class="project-detail-main">
+        <section class="project-detail-hero" aria-live="polite">
+          <div class="project-detail-hero-copy">
+            <p class="project-detail-eyebrow">Detalhe do projeto</p>
+            <h1 id="project-title">Carregando projeto…</h1>
+            <p id="project-description" class="project-detail-description">
+              Buscando informações do projeto e seus slides.
+            </p>
+
+            <div class="project-detail-meta" id="project-meta" hidden>
+              <span class="project-detail-pill" id="project-status"></span>
+              <span class="project-detail-pill" id="project-date"></span>
+              <span class="project-detail-pill" id="project-slides-count"></span>
+            </div>
+
+            <div class="project-detail-actions">
+              <a id="open-editor-btn" class="project-detail-btn project-detail-btn--primary" href="/pages/editor.html">
+                Abrir no editor
+              </a>
+              <a class="project-detail-btn" href="/pages/projects.html">
+                Voltar para a lista
+              </a>
+            </div>
+          </div>
+
+          <div class="project-detail-preview" id="project-preview">
+            <div class="project-detail-preview-label">Prévia do primeiro slide</div>
+            <div class="project-detail-preview-frame" id="project-preview-frame">
+              <span>Sem imagem carregada</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="project-detail-section">
+          <div class="project-detail-section-header">
+            <div>
+              <p class="project-detail-section-eyebrow">Slides</p>
+              <h2>Todos os slides do projeto</h2>
+            </div>
+            <p id="project-slides-summary" class="project-detail-section-summary"></p>
+          </div>
+
+          <div id="project-slides-grid" class="project-detail-slides-grid" aria-live="polite"></div>
+        </section>
+      </main>
+
+      <div id="project-detail-toast" class="project-detail-toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script type="module" src="../js/project-detail-page.js"></script>
+  </body>
+</html>

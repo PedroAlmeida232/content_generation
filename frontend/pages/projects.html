@@ -10,6 +10,70 @@
     />
     <link rel="stylesheet" href="../css/design-tokens.css" />
     <link rel="stylesheet" href="../css/projects.css" />
+    <style>
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .projects-search-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--space-100);
+        padding: var(--space-150) var(--space-200);
+        border: 1px solid rgba(20, 33, 61, 0.08);
+        border-radius: var(--radius-md);
+        background: rgba(255, 253, 248, 0.88);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 16px rgba(20, 33, 61, 0.07);
+      }
+
+      .projects-search-icon {
+        font-size: 1rem;
+        color: var(--color-accent);
+        opacity: 0.85;
+      }
+
+      .projects-search-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--color-ink-strong);
+        font: inherit;
+        font-size: var(--font-size-200);
+      }
+
+      .projects-search-input::placeholder {
+        color: rgba(20, 33, 61, 0.55);
+      }
+
+      .projects-search-clear {
+        border: 0;
+        border-radius: 999px;
+        padding: 0.55rem 0.9rem;
+        background: rgba(20, 33, 61, 0.08);
+        color: var(--color-ink-strong);
+        font: inherit;
+        font-size: var(--font-size-100);
+        font-weight: var(--font-weight-semibold);
+        cursor: pointer;
+        transition: background 0.16s, transform 0.16s;
+      }
+
+      .projects-search-clear:hover {
+        background: rgba(20, 33, 61, 0.12);
+        transform: translateY(-1px);
+      }
+    </style>
   </head>
   <body class="projects-body">
     <div class="projects-shell">
@@ -49,6 +113,24 @@
             ✦ Novo carrossel
           </a>
         </div>
+
+        <!-- Search -->
+        <form class="projects-search-bar" id="projects-search-form" role="search" aria-label="Buscar projetos">
+          <label class="sr-only" for="projects-search-input">Buscar projetos</label>
+          <span class="projects-search-icon" aria-hidden="true">⌕</span>
+          <input
+            id="projects-search-input"
+            class="projects-search-input"
+            type="search"
+            name="q"
+            placeholder="Buscar por título ou descrição"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="projects-search-clear" class="projects-search-clear" type="button">
+            Limpar
+          </button>
+        </form>
 
         <!-- Filter bar -->
         <div class="projects-filter-bar" role="group" aria-label="Filtrar projetos por status">

@@ -62,10 +62,11 @@ public class ProjectService {
 	}
 
 	@Transactional(readOnly = true)
-	public ProjectPageResponse getProjects(UUID userId, int page, int size, String status) {
+	public ProjectPageResponse getProjects(UUID userId, int page, int size, String status, String search) {
 		int normalizedPage = normalizePage(page);
 		int normalizedSize = normalizeSize(size);
 		String normalizedStatus = normalizeStatus(status);
+		String normalizedSearch = normalizeSearch(search);
 
 		Pageable pageable = PageRequest.of(
 			normalizedPage,
@@ -73,9 +74,12 @@ public class ProjectService {
 			Sort.by(Sort.Direction.DESC, "createdAt")
 		);
 
-		Page<Project> projects = normalizedStatus == null
-			? projectRepository.findByUserId(userId, pageable)
-			: projectRepository.findByUserIdAndStatusIgnoreCase(userId, normalizedStatus, pageable);
+		Page<Project> projects = projectRepository.findByUserIdAndStatusAndSearch(
+			userId,
+			normalizedStatus,
+			normalizedSearch,
+			pageable
+		);
 
 		List<ProjectSummaryResponse> content = projects.getContent().stream()
 			.map(project -> {
@@ -215,6 +219,15 @@ public class ProjectService {
 		}
 
 		return normalized;
+	}
+
+	private String normalizeSearch(String search) {
+		if (search == null) {
+			return null;
+		}
+
+		String normalized = search.trim();
+		return normalized.isEmpty() ? null : normalized;
 	}
 
 	private String normalizeNullable(String value) {

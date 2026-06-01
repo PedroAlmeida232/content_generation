@@ -3,10 +3,10 @@
  *
  * Funcionalidades:
  *  1. Valida sessão JWT e redireciona para login se necessário.
- *  2. Carrega projetos via GET /projects com paginação e filtro por status.
+ *  2. Carrega projetos via GET /projects com paginação, filtro por status e busca textual.
  *  3. Renderiza cards com thumbnail do primeiro slide, título, status e data.
  *  4. Permite excluir projetos com confirmação via modal.
- *  5. Navega para o editor com o preview do projeto ao clicar em "Visualizar".
+ *  5. Navega para a página de detalhe ao clicar em "Ver detalhe".
  *  6. Exibe estado de loading (skeleton), vazio e erro.
  */
 
@@ -17,21 +17,23 @@ import {
 } from "./auth-session.js";
 import { projectsApi, ApiError } from "./apiClient.js";
 
-// ── Constantes ───────────────────────────────────────────────
 const PAGE_SIZE = 12;
 
-// ── Estado da página ─────────────────────────────────────────
 let currentPage = 0;
 let currentFilter = "";
+let currentSearch = "";
 let totalPages = 0;
 let pendingDeleteId = null;
+let searchDebounceTimer = null;
 
-// ── Referências do DOM ────────────────────────────────────────
 const grid = document.getElementById("projects-grid");
 const pagination = document.getElementById("projects-pagination");
 const paginationInfo = document.getElementById("pagination-info");
 const prevBtn = document.getElementById("pagination-prev");
 const nextBtn = document.getElementById("pagination-next");
+const searchForm = document.getElementById("projects-search-form");
+const searchInput = document.getElementById("projects-search-input");
+const searchClearBtn = document.getElementById("projects-search-clear");
 
 const deleteOverlay = document.getElementById("delete-modal-overlay");
 const deleteCancelBtn = document.getElementById("delete-cancel-btn");
@@ -42,10 +44,7 @@ const toast = document.getElementById("projects-toast");
 const logoutBtn = document.getElementById("projects-logout");
 const userEmailEl = document.getElementById("projects-user-email");
 
-// ── Filter buttons ────────────────────────────────────────────
 const filterBtns = document.querySelectorAll(".projects-filter-btn");
-
-// ── Utilitários ───────────────────────────────────────────────
 
 function formatDate(isoString) {
   if (!isoString) return "—";
@@ -82,8 +81,6 @@ function badgeLabel(status) {
   return map[status?.toLowerCase()] ?? status ?? "—";
 }
 
-// ── Toast ─────────────────────────────────────────────────────
-
 let _toastTimer = null;
 
 function showToast(message, type = "success") {
@@ -94,8 +91,6 @@ function showToast(message, type = "success") {
     toast.className = "projects-toast";
   }, 3500);
 }
-
-// ── Skeleton loading ──────────────────────────────────────────
 
 function renderSkeletons(count = 6) {
   grid.setAttribute("aria-busy", "true");
@@ -113,8 +108,6 @@ function renderSkeletons(count = 6) {
     )
     .join("");
 }
-
-// ── Card rendering ────────────────────────────────────────────
 
 function renderCard(project) {
   const {
@@ -135,7 +128,7 @@ function renderCard(project) {
          <span aria-hidden="true">🎠</span>
        </div>`;
 
-  const viewHref = `/pages/editor.html?project_id=${encodeURIComponent(id)}`;
+  const viewHref = `/pages/project-detail.html?project_id=${encodeURIComponent(id)}`;
 
   return `
   <article class="project-card" role="listitem" data-project-id="${id}">
@@ -146,9 +139,9 @@ function renderCard(project) {
           href="${viewHref}"
           class="project-card-action-btn btn-view"
           id="view-project-${id}"
-          aria-label="Visualizar projeto ${title}"
+          aria-label="Ver detalhe do projeto ${title}"
         >
-          👁 Visualizar
+          👁 Ver detalhe
         </a>
         <button
           type="button"
@@ -172,17 +165,16 @@ function renderCard(project) {
 }
 
 function renderEmptyState() {
-  const filterLabel = currentFilter
-    ? ` com status "${badgeLabel(currentFilter)}"`
-    : "";
+  const filterLabel = currentFilter ? ` com status "${badgeLabel(currentFilter)}"` : "";
+  const searchLabel = currentSearch ? ` para "${currentSearch}"` : "";
   return `
   <div class="projects-empty" role="listitem">
     <p class="projects-empty-icon" aria-hidden="true">🎠</p>
-    <h2>Nenhum projeto encontrado${filterLabel}</h2>
+    <h2>Nenhum projeto encontrado${searchLabel}${filterLabel}</h2>
     <p>
       ${
-        currentFilter
-          ? "Tente outro filtro ou crie um novo carrossel pelo editor."
+        currentSearch || currentFilter
+          ? "Tente ajustar a busca/filtro ou crie um novo carrossel pelo editor."
           : "Você ainda não gerou nenhum carrossel. Comece agora pelo editor!"
       }
     </p>
@@ -203,8 +195,6 @@ function renderErrorState(message) {
   </div>`;
 }
 
-// ── Pagination ────────────────────────────────────────────────
-
 function updatePagination(page, total) {
   totalPages = total;
   if (totalPages <= 1) {
@@ -217,8 +207,6 @@ function updatePagination(page, total) {
   nextBtn.disabled = page >= total - 1;
 }
 
-// ── Data loading ──────────────────────────────────────────────
-
 async function loadProjects() {
   renderSkeletons();
 
@@ -227,6 +215,7 @@ async function loadProjects() {
       page: currentPage,
       size: PAGE_SIZE,
       status: currentFilter || null,
+      search: currentSearch || null,
     });
 
     const projects = data?.content ?? [];
@@ -239,17 +228,12 @@ async function loadProjects() {
     }
 
     grid.innerHTML = projects.map(renderCard).join("");
-
     updatePagination(data.page ?? 0, data.totalPages ?? 1);
 
-    // Attach delete listeners
     grid.querySelectorAll("[data-delete-id]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        openDeleteModal(
-          btn.dataset.deleteId,
-          btn.dataset.deleteTitle
-        );
+        openDeleteModal(btn.dataset.deleteId, btn.dataset.deleteTitle);
       });
     });
   } catch (err) {
@@ -269,11 +253,14 @@ async function loadProjects() {
   }
 }
 
-// ── Filter ────────────────────────────────────────────────────
-
 function applyFilter(status) {
   currentFilter = status;
   currentPage = 0;
+
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
 
   filterBtns.forEach((btn) => {
     btn.classList.toggle("is-active", btn.dataset.status === status);
@@ -282,7 +269,31 @@ function applyFilter(status) {
   loadProjects();
 }
 
-// ── Delete modal ──────────────────────────────────────────────
+function normalizeSearch(value) {
+  return value.trim();
+}
+
+function applySearch(value) {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
+
+  currentSearch = normalizeSearch(value);
+  currentPage = 0;
+  loadProjects();
+}
+
+function scheduleSearch(value) {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
+
+  searchDebounceTimer = setTimeout(() => {
+    searchDebounceTimer = null;
+    applySearch(value);
+  }, 300);
+}
 
 function openDeleteModal(projectId, projectTitle) {
   pendingDeleteId = projectId;
@@ -305,7 +316,6 @@ async function handleConfirmDelete() {
   const id = pendingDeleteId;
   closeDeleteModal();
 
-  // Optimistically remove card
   const card = grid.querySelector(`[data-project-id="${id}"]`);
   if (card) {
     card.style.transition = "opacity 0.22s, transform 0.22s";
@@ -317,16 +327,12 @@ async function handleConfirmDelete() {
   try {
     await projectsApi.delete(id);
     showToast("Projeto excluído com sucesso.", "success");
-    // Reload current page to fix grid gaps / empty state
     setTimeout(loadProjects, 500);
-  } catch (err) {
+  } catch {
     showToast("Erro ao excluir projeto. Tente novamente.", "error");
-    // Re-render to restore removed card
     setTimeout(loadProjects, 600);
   }
 }
-
-// ── Pagination handlers ───────────────────────────────────────
 
 function handlePrev() {
   if (currentPage > 0) {
@@ -344,20 +350,20 @@ function handleNext() {
   }
 }
 
-// ── Logout ────────────────────────────────────────────────────
-
 function handleLogout() {
   logout();
   redirectToLogin("/pages/projects.html");
 }
-
-// ── Init ──────────────────────────────────────────────────────
 
 const session = requireAuthenticatedSession("/pages/projects.html");
 
 if (session) {
   if (session.email && userEmailEl) {
     userEmailEl.textContent = session.email;
+  }
+
+  if (searchInput) {
+    searchInput.value = currentSearch;
   }
 
   logoutBtn?.addEventListener("click", handleLogout);
@@ -369,15 +375,37 @@ if (session) {
   prevBtn?.addEventListener("click", handlePrev);
   nextBtn?.addEventListener("click", handleNext);
 
+  searchForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    applySearch(searchInput?.value ?? "");
+  });
+
+  searchInput?.addEventListener("input", (event) => {
+    scheduleSearch(event.currentTarget.value);
+  });
+
+  searchInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      searchInput.value = "";
+      applySearch("");
+    }
+  });
+
+  searchClearBtn?.addEventListener("click", () => {
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.focus();
+    }
+    applySearch("");
+  });
+
   deleteCancelBtn?.addEventListener("click", closeDeleteModal);
   deleteConfirmBtn?.addEventListener("click", handleConfirmDelete);
 
-  // Close modal on overlay click
   deleteOverlay?.addEventListener("click", (e) => {
     if (e.target === deleteOverlay) closeDeleteModal();
   });
 
-  // Close modal on Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && deleteOverlay.classList.contains("is-visible")) {
       closeDeleteModal();
