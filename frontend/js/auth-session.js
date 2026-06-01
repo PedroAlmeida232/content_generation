@@ -56,6 +56,7 @@ export function buildLoginRedirect(nextPath = `${window.location.pathname}${wind
 }
 
 export function redirectToLogin(nextPath) {
+  logout();
   window.location.replace(buildLoginRedirect(nextPath));
 }
 

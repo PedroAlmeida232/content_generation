@@ -38,10 +38,11 @@ public class ProjectController {
 		Authentication authentication,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "10") int size,
-		@RequestParam(required = false) String status
+		@RequestParam(required = false) String status,
+		@RequestParam(required = false) String q
 	) {
 		JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
-		return projectService.getProjects(principal.userId(), page, size, status);
+		return projectService.getProjects(principal.userId(), page, size, status, q);
 	}
 
 	@PostMapping

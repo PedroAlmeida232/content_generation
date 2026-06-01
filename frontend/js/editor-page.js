@@ -12,7 +12,7 @@
  */
 
 import { requireAuthenticatedSession } from "./auth-session.js";
-import { aiApi, ApiError } from "./apiClient.js";
+import { aiApi, projectsApi, ApiError } from "./apiClient.js";
 import { getApiKey, saveApiKey } from "./storage.js";
 import { CarouselEditor } from "./carouselEditor.js";
 import { CarouselPreview } from "./carouselPreview.js";
@@ -115,11 +115,36 @@ function resetModal() {
   spinnerWrap.removeAttribute("hidden");
 }
 
-function showSuccess(jobId, slides) {
+async function persistGeneratedProject(jobId, slides) {
+  try {
+    const values = editor.getValues();
+    const title = values.prompt.slice(0, 80) || `Carrossel ${new Date().toLocaleDateString("pt-BR")}`;
+    const project = await projectsApi.create(title, null, "done");
+    const slidePayload = (slides || []).map((s) => ({
+      slide_order: s.slide_order,
+      image_url: s.image_url,
+      caption: s.caption,
+      prompt_used: s.prompt_used,
+    }));
+    if (slidePayload.length > 0) {
+      await projectsApi.saveSlides(project.id, slidePayload);
+    }
+    return project.id;
+  } catch (err) {
+    console.warn("[editor-page] Falha ao persistir projeto:", err);
+    return null;
+  }
+}
+
+async function showSuccess(jobId, slides) {
   spinnerWrap.setAttribute("hidden", "");
   setProgress(100);
   progressMsg.textContent = "Carrossel gerado com sucesso!";
   currentSlides = slides || [];
+  const projectId = await persistGeneratedProject(jobId, slides);
+  if (projectId && viewLink) {
+    viewLink.href = `/pages/projects.html`;
+  }
   successBlock.classList.add("is-visible");
 }
 
@@ -158,7 +183,7 @@ async function pollJobStatus(jobId) {
 
     if (status === "done") {
       stopPolling();
-      showSuccess(jobId, data?.slides);
+      await showSuccess(jobId, data?.slides);
       return;
     }
 
@@ -330,4 +355,35 @@ if (session) {
       previewSection.scrollIntoView({ behavior: "smooth" });
     }
   });
+
+  // ── Load existing project if ?project_id= is present ─────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const existingProjectId = urlParams.get("project_id");
+  if (existingProjectId) {
+    (async () => {
+      try {
+        const project = await projectsApi.get(existingProjectId);
+        const slides = (project.slides || []).map((s) => ({
+          slide_order: s.slideOrder,
+          image_url: s.imageUrl,
+          caption: s.caption,
+          prompt_used: s.promptUsed,
+        }));
+        if (slides.length > 0) {
+          // Hide creation form, show preview directly
+          const editorCard = document.querySelector(".editor-card");
+          if (editorCard) editorCard.setAttribute("hidden", "");
+
+          currentSlides = slides;
+          preview.render(slides, "1:1");
+          const previewSection = document.getElementById("editor-preview");
+          if (previewSection) {
+            previewSection.removeAttribute("hidden");
+          }
+        }
+      } catch (err) {
+        console.warn("[editor-page] Falha ao carregar projeto existente:", err);
+      }
+    })();
+  }
 }
