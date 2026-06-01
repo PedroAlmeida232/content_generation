@@ -13,6 +13,7 @@
 
 import { requireAuthenticatedSession } from "./auth-session.js";
 import { aiApi, projectsApi, ApiError } from "./apiClient.js";
+import { classifyGenerationError } from "./error-feedback.js";
 import { getApiKey, saveApiKey } from "./storage.js";
 import { CarouselEditor } from "./carouselEditor.js";
 import { CarouselPreview } from "./carouselPreview.js";
@@ -42,6 +43,8 @@ const progressBarRegion = document.getElementById("progress-bar-region");
 const successBlock = document.getElementById("progress-success");
 const errorBlock = document.getElementById("progress-error");
 const errorMsg = document.getElementById("progress-error-msg");
+const errorHint = document.getElementById("progress-error-hint");
+const errorActionBtn = document.getElementById("progress-error-action");
 const closeBtn = document.getElementById("progress-close-btn");
 const viewLink = document.getElementById("progress-view-link");
 const spinnerWrap = document.getElementById("progress-spinner");
@@ -56,6 +59,7 @@ let isPolling = false;
 let currentSlides = [];
 let currentAspectRatio = "1:1";
 let editorReady = false;
+let currentErrorAction = null;
 const originalSubmitHtml = submitBtn.innerHTML;
 
 submitBtn.disabled = true;
@@ -85,14 +89,21 @@ function setProgress(pct) {
   progressBarRegion.setAttribute("aria-valuenow", String(clamped));
 }
 
-function showFormError(message) {
-  formFeedback.textContent = message;
-  formFeedback.className = "editor-form-feedback is-error";
-}
-
 function clearFormError() {
   formFeedback.textContent = "";
   formFeedback.className = "editor-form-feedback";
+}
+
+function setFormError(message, variant = "error") {
+  formFeedback.textContent = message;
+  formFeedback.className = `editor-form-feedback is-${variant}`;
+}
+
+function focusEditorField(fieldId) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+  field.focus();
+  field.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 // ── Modal de Progresso ────────────────────────────────────────────
@@ -112,6 +123,16 @@ function resetModal() {
   progressMsg.textContent = "Iniciando geração…";
   successBlock.classList.remove("is-visible");
   errorBlock.classList.remove("is-visible");
+  errorBlock.dataset.errorKind = "";
+  if (errorHint) {
+    errorHint.hidden = true;
+    errorHint.textContent = "";
+  }
+  if (errorActionBtn) {
+    errorActionBtn.textContent = "Tentar novamente";
+    errorActionBtn.disabled = false;
+  }
+  currentErrorAction = null;
   spinnerWrap.removeAttribute("hidden");
 }
 
@@ -148,11 +169,41 @@ async function showSuccess(jobId, slides) {
   successBlock.classList.add("is-visible");
 }
 
-function showError(message) {
+function showError(error) {
+  const feedback = classifyGenerationError(error);
   spinnerWrap.setAttribute("hidden", "");
-  errorMsg.textContent =
-    message ||
-    "Ocorreu um erro durante a geração. Tente novamente.";
+  errorBlock.dataset.errorKind = feedback.kind;
+  errorMsg.textContent = feedback.message;
+  if (errorHint) {
+    errorHint.hidden = !feedback.hint;
+    errorHint.textContent = feedback.hint || "";
+  }
+  if (errorActionBtn) {
+    errorActionBtn.textContent = feedback.actionLabel;
+  }
+  currentErrorAction = () => {
+    if (feedback.actionTarget) {
+      hideOverlay();
+      setFormControlsDisabled(false);
+      submitBtn.innerHTML = originalSubmitHtml;
+      focusEditorField(feedback.actionTarget);
+      return;
+    }
+
+    if (feedback.kind === "credits-exhausted") {
+      hideOverlay();
+      setFormControlsDisabled(false);
+      submitBtn.innerHTML = originalSubmitHtml;
+      return;
+    }
+
+    hideOverlay();
+    setFormControlsDisabled(false);
+    submitBtn.innerHTML = originalSubmitHtml;
+    if (feedback.kind === "service-unavailable" || feedback.kind === "generic") {
+      return;
+    }
+  };
   errorBlock.classList.add("is-visible");
 }
 
@@ -191,8 +242,11 @@ async function pollJobStatus(jobId) {
       stopPolling();
       showError(
         data?.error
-          ? `Erro do servidor: ${data.error}`
-          : "O servidor reportou falha na geração do carrossel."
+          ? new ApiError(data.error, { status: 502, body: data })
+          : new ApiError("O servidor reportou falha na geração do carrossel.", {
+              status: 502,
+              body: data,
+            })
       );
       return;
     }
@@ -210,7 +264,7 @@ async function pollJobStatus(jobId) {
     ) {
       // Erro definitivo (ex: 404 job não encontrado)
       stopPolling();
-      showError(`Erro ao consultar status: ${err.message}`);
+      showError(err);
     }
     // Para erros de rede temporários, continua o polling silenciosamente
   } finally {
@@ -231,14 +285,14 @@ async function handleFormSubmit(event) {
   clearFormError();
 
   if (!editorReady) {
-    showFormError("Aguarde o carregamento dos contextos do editor.");
+    setFormError("Aguarde o carregamento dos contextos do editor.");
     return;
   }
 
   // 1. Delegar validação ao CarouselEditor
   const { isValid, values, message } = editor.validate();
   if (!isValid) {
-    showFormError(message);
+    setFormError(message);
     return;
   }
 
@@ -291,23 +345,26 @@ async function handleFormSubmit(event) {
     submitBtn.innerHTML = originalSubmitHtml;
 
     let message = "Erro ao iniciar a geração. Tente novamente.";
+    let errorToShow = err;
     if (err instanceof ApiError) {
       if (err.status === 401) {
-        message = "Sessão expirada. Faça login novamente.";
+        message = "Sessão expirada ou chave inválida.";
       } else if (err.status === 400) {
-        message = `Dados inválidos: ${err.message}`;
+        message = err.message;
       } else if (err.status === 502) {
-        message =
-          "Não foi possível conectar ao auth-service." +
-          " Tente mais tarde.";
-      } else {
-        message = `Erro ${err.status}: ${err.message}`;
+        message = err.message;
       }
+      errorToShow = err;
     } else if (err instanceof Error) {
       message = err.message;
+      errorToShow = new ApiError(message, { status: 500 });
     }
 
-    showFormError(message);
+    const feedback = classifyGenerationError(errorToShow);
+    setFormError(
+      feedback.message || message,
+      feedback.variant === "warning" ? "warning" : "error"
+    );
   }
 }
 
@@ -318,6 +375,12 @@ function handleCloseBtn() {
   hideOverlay();
   setFormControlsDisabled(false);
   submitBtn.innerHTML = originalSubmitHtml;
+}
+
+function handleErrorAction() {
+  if (typeof currentErrorAction === "function") {
+    currentErrorAction();
+  }
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
@@ -338,6 +401,7 @@ if (session) {
 
   form.addEventListener("submit", handleFormSubmit);
   closeBtn.addEventListener("click", handleCloseBtn);
+  errorActionBtn?.addEventListener("click", handleErrorAction);
 
   viewLink?.addEventListener("click", (e) => {
     e.preventDefault();

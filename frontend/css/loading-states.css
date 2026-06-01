@@ -1,0 +1,146 @@
+/* Shared loading and skeleton primitives used across the frontend. */
+
+.loading-surface {
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  border-radius: clamp(1rem, 1.6vw, 1.5rem);
+  background: rgba(255, 253, 248, 0.86);
+  box-shadow: var(--shadow-card);
+}
+
+.loading-stack {
+  display: grid;
+  gap: var(--space-100);
+}
+
+.loading-grid {
+  display: grid;
+  gap: var(--space-200);
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(20, 33, 61, 0.08);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: loading-shimmer 1.35s ease-in-out infinite;
+}
+
+.skeleton-line {
+  display: block;
+  height: 1rem;
+  border-radius: 999px;
+}
+
+.skeleton-line--xs {
+  width: 28%;
+}
+
+.skeleton-line--sm {
+  width: 42%;
+}
+
+.skeleton-line--md {
+  width: 60%;
+}
+
+.skeleton-line--lg {
+  width: 78%;
+}
+
+.skeleton-line--xl {
+  width: 100%;
+}
+
+.skeleton-pill {
+  display: inline-block;
+  height: 2rem;
+  min-width: 6rem;
+  border-radius: 999px;
+}
+
+.skeleton-button {
+  display: inline-block;
+  width: 8.5rem;
+  height: 2.75rem;
+  border-radius: 999px;
+}
+
+.skeleton-avatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+}
+
+.skeleton-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 0;
+}
+
+.skeleton-frame {
+  width: 100%;
+  min-height: 18rem;
+  border-radius: clamp(1rem, 1.6vw, 1.5rem);
+}
+
+.skeleton-logo {
+  width: 100%;
+  min-height: 180px;
+  border-radius: 1.25rem;
+}
+
+.skeleton-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-100);
+  align-items: center;
+}
+
+.skeleton-card-body {
+  padding: var(--space-200) var(--space-250, 1.25rem);
+}
+
+.skeleton-list-item {
+  padding: var(--space-200);
+  border-radius: 1rem;
+}
+
+.skeleton-list-item + .skeleton-list-item {
+  margin-top: var(--space-150);
+}
+
+.skeleton-muted {
+  opacity: 0.72;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}

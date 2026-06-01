@@ -255,6 +255,13 @@ body.editor-body {
   border: 1px solid rgba(181, 68, 68, 0.2);
 }
 
+.editor-form-feedback.is-warning {
+  display: block;
+  background: rgba(194, 109, 58, 0.12);
+  color: #8a4b17;
+  border: 1px solid rgba(194, 109, 58, 0.26);
+}
+
 /* ── Modal de Progresso ─────────────────────────────────────────── */
 
 #progress-overlay {
@@ -478,6 +485,22 @@ body.editor-body {
   display: block;
 }
 
+.progress-error[data-error-kind="invalid-api-key"],
+.progress-error[data-error-kind="credits-exhausted"] {
+  background: rgba(194, 109, 58, 0.1);
+  border-color: rgba(194, 109, 58, 0.26);
+}
+
+.progress-error[data-error-kind="content-blocked"] {
+  background: rgba(181, 68, 68, 0.1);
+  border-color: rgba(181, 68, 68, 0.25);
+}
+
+.progress-error[data-error-kind="service-unavailable"] {
+  background: rgba(45, 106, 106, 0.12);
+  border-color: rgba(45, 106, 106, 0.24);
+}
+
 .progress-error-title {
   margin: 0 0 var(--space-100);
   font-family: var(--font-family-heading);
@@ -490,6 +513,41 @@ body.editor-body {
   font-size: var(--font-size-100);
   color: var(--color-ink);
   line-height: 1.6;
+}
+
+.progress-error-hint {
+  margin: 0 0 var(--space-150);
+  font-size: var(--font-size-100);
+  color: var(--color-ink);
+  line-height: 1.55;
+  opacity: 0.85;
+}
+
+.progress-error-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-150);
+}
+
+.progress-error-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.2rem;
+  border: 1px solid rgba(20, 33, 61, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--color-ink-strong);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-100);
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+}
+
+.progress-error-action:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 253, 248, 1);
 }
 
 .progress-close-btn {
@@ -885,6 +943,5 @@ body.editor-body {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 
 

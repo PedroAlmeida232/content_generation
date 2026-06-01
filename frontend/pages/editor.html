@@ -267,6 +267,12 @@
         <div class="progress-error" id="progress-error" aria-live="assertive">
           <p class="progress-error-title">Falha na geração</p>
           <p id="progress-error-msg">Ocorreu um erro durante a geração. Tente novamente.</p>
+          <p id="progress-error-hint" class="progress-error-hint" hidden></p>
+          <div class="progress-error-actions">
+            <button class="progress-error-action" id="progress-error-action" type="button">
+              Tentar novamente
+            </button>
+          </div>
           <button class="progress-close-btn" id="progress-close-btn" type="button">
             Fechar e tentar novamente
           </button>

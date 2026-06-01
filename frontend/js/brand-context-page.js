@@ -1,6 +1,10 @@
 import { logout } from "./auth.js";
 import { requireAuthenticatedSession, redirectToLogin } from "./auth-session.js";
 import { contextsApi, ApiError } from "./apiClient.js";
+import {
+  renderBrandContextSkeleton,
+  setBusyState,
+} from "./loading-states.js";
 
 const FIELD_KEYS = {
   name: "brand_name",
@@ -34,6 +38,14 @@ const resetBtn = document.getElementById("brand-context-reset");
 
 const contextState = new Map();
 let isSaving = false;
+
+function setFormControlsDisabled(disabled) {
+  [nameInput, logoInput, paletteInput, toneInput, saveBtn, resetBtn].forEach((input) => {
+    if (input) {
+      input.disabled = disabled;
+    }
+  });
+}
 
 function showFeedback(message, tone = "success") {
   if (!feedbackEl) return;
@@ -139,11 +151,14 @@ function renderEmptyState() {
 
 function renderLoadingState() {
   if (!listEl) return;
-  listEl.innerHTML = `
-    <div class="brand-context-loading">
-      Carregando contextos de marca…
-    </div>
-  `;
+  const skeleton = renderBrandContextSkeleton();
+  setBusyState(listEl, true);
+  setFormControlsDisabled(true);
+  if (previewNameEl) previewNameEl.innerHTML = skeleton.previewName;
+  if (previewLogoEl) previewLogoEl.innerHTML = skeleton.previewLogo;
+  if (previewPaletteEl) previewPaletteEl.innerHTML = skeleton.previewPalette;
+  if (previewToneEl) previewToneEl.innerHTML = skeleton.previewTone;
+  listEl.innerHTML = skeleton.list;
 }
 
 function focusFieldForKey(contextKey) {
@@ -275,11 +290,16 @@ async function loadContexts() {
     if (toneInput) toneInput.value = toneContext?.contextValue || "";
 
     renderPreview();
+    setBusyState(listEl, false);
+    setFormControlsDisabled(false);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       redirectToLogin("/pages/brand-context.html");
       return;
     }
+    setBusyState(listEl, false);
+    setFormControlsDisabled(false);
+    renderPreview();
     renderEmptyState();
     showFeedback(
       err instanceof ApiError ? err.message : "Não foi possível carregar os contextos de marca.",
@@ -328,6 +348,7 @@ async function handleSubmit(event) {
   } finally {
     isSaving = false;
     setLoading(false);
+    setFormControlsDisabled(false);
   }
 }
 

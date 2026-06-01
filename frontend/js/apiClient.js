@@ -4,12 +4,41 @@ const AUTH_BASE = "/api/auth";
 const AI_BASE = "/api/ai";
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, body = null } = {}) {
+  constructor(message, { status = 0, body = null, code = null } = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
+    this.code = code;
   }
+}
+
+function extractErrorMessage(body, response) {
+  if (!body || typeof body !== "object") {
+    return `Request failed with status ${response.status}`;
+  }
+
+  const message =
+    body.message ||
+    body.detail ||
+    body.error ||
+    body.error_message ||
+    body.errorMessage;
+
+  if (typeof message === "string" && message.trim()) {
+    return message.trim();
+  }
+
+  return `Request failed with status ${response.status}`;
+}
+
+function extractErrorCode(body) {
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const code = body.errorCode || body.error_code || body.code;
+  return typeof code === "string" && code.trim() ? code.trim() : null;
 }
 
 async function parseApiResponse(response) {
@@ -22,8 +51,12 @@ async function parseApiResponse(response) {
   const body = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    const message = body?.message || `Request failed with status ${response.status}`;
-    throw new ApiError(message, { status: response.status, body });
+    const message = extractErrorMessage(body, response);
+    throw new ApiError(message, {
+      status: response.status,
+      body,
+      code: extractErrorCode(body),
+    });
   }
 
   return body;
@@ -35,8 +68,12 @@ async function parseBinaryResponse(response) {
 
   if (!response.ok) {
     const body = isJson ? await response.json().catch(() => null) : null;
-    const message = body?.message || `Request failed with status ${response.status}`;
-    throw new ApiError(message, { status: response.status, body });
+    const message = extractErrorMessage(body, response);
+    throw new ApiError(message, {
+      status: response.status,
+      body,
+      code: extractErrorCode(body),
+    });
   }
 
   const blob = await response.blob();

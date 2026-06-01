@@ -3,6 +3,10 @@ import {
   redirectToLogin,
 } from "./auth-session.js";
 import { projectsApi, ApiError } from "./apiClient.js";
+import {
+  renderProjectDetailSkeleton,
+  setBusyState,
+} from "./loading-states.js";
 
 const titleEl = document.getElementById("project-title");
 const descriptionEl = document.getElementById("project-description");
@@ -184,17 +188,18 @@ function showToast(message) {
 }
 
 function renderLoadingState() {
-  if (titleEl) titleEl.textContent = "Carregando projeto…";
-  if (descriptionEl) descriptionEl.textContent = "Buscando informações do projeto e seus slides.";
+  const skeleton = renderProjectDetailSkeleton(3);
+  if (titleEl) titleEl.innerHTML = skeleton.heroTitle;
+  if (descriptionEl) descriptionEl.innerHTML = skeleton.heroDescription;
   if (metaEl) metaEl.hidden = true;
+  if (statusEl) statusEl.innerHTML = "";
+  if (dateEl) dateEl.innerHTML = "";
+  if (slidesCountEl) slidesCountEl.innerHTML = "";
+  if (previewFrameEl) previewFrameEl.innerHTML = skeleton.previewFrame;
   setZipButtonState("disabled");
+  setBusyState(slidesGridEl, true);
   if (slidesGridEl) {
-    slidesGridEl.innerHTML = `
-      <div class="project-detail-loading">
-        <p class="project-detail-state-title">Carregando slides…</p>
-        <p class="project-detail-state-copy">Estamos montando os dados do projeto.</p>
-      </div>
-    `;
+    slidesGridEl.innerHTML = skeleton.slides;
   }
 }
 
@@ -217,6 +222,7 @@ function renderErrorState(title, message, retryHandler) {
 }
 
 function renderEmptySlidesState() {
+  setBusyState(slidesGridEl, false);
   if (slidesGridEl) {
     slidesGridEl.innerHTML = `
       <div class="project-detail-empty">
@@ -339,6 +345,7 @@ async function loadProject() {
       slidesGridEl.querySelectorAll("[data-download-slide-id]").forEach((button) => {
         button.addEventListener("click", () => handleDownloadSlide(button.dataset.downloadSlideId));
       });
+      setBusyState(slidesGridEl, false);
     }
   } catch (err) {
     let title = "Erro ao carregar projeto";
@@ -360,7 +367,9 @@ async function loadProject() {
     if (titleEl) titleEl.textContent = "Não foi possível carregar o projeto";
     if (descriptionEl) descriptionEl.textContent = message;
     if (metaEl) metaEl.hidden = true;
+    if (previewFrameEl) previewFrameEl.innerHTML = "<span>Sem imagem carregada</span>";
     setZipButtonState("disabled");
+    setBusyState(slidesGridEl, false);
     renderErrorState(title, message, loadProject);
   }
 }
